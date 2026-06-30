@@ -1,14 +1,14 @@
 import { STORE_CONFIG } from '../config/store.js';
 
-export function formatCurrency(value, language = 'ar') {
+export function formatCurrency(value, language = 'ar', currency = STORE_CONFIG.currency) {
   try {
     return new Intl.NumberFormat(language === 'ar' ? 'ar-MA' : 'en-MA', {
       style: 'currency',
-      currency: STORE_CONFIG.currency,
+      currency,
       maximumFractionDigits: 0,
     }).format(value);
   } catch {
-    return `${value} ${STORE_CONFIG.currency}`;
+    return `${value} ${currency}`;
   }
 }
 

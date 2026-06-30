@@ -1,10 +1,44 @@
+import { useEffect, useState } from 'react';
 import CategoryCard from '../components/common/CategoryCard.jsx';
 import { useLanguage } from '../context/LanguageContext.jsx';
-import { getCategories } from '../services/catalogService.js';
+import { getCategories as getFallbackCategories } from '../services/catalogService.js';
+import { getCategories as getApiCategories } from '../services/api.js';
+import { adaptCategories } from '../utils/adapters.js';
 
 export default function Categories() {
-  const { t } = useLanguage();
-  const categories = getCategories();
+  const { language, t } = useLanguage();
+  const [categories, setCategories] = useState(getFallbackCategories);
+  const [catalogStatus, setCatalogStatus] = useState({ isLoading: true, error: '' });
+  const loadingText = language === 'ar' ? 'جاري تحميل الأقسام...' : 'Loading categories...';
+  const offlineText =
+    language === 'ar'
+      ? 'تعذر الاتصال بالخادم حاليا، يتم عرض بيانات محلية مؤقتة.'
+      : 'Backend is offline right now, local demo data is shown.';
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadCategories() {
+      setCatalogStatus({ isLoading: true, error: '' });
+
+      try {
+        const apiCategories = await getApiCategories();
+        if (!isMounted) return;
+        setCategories(adaptCategories(apiCategories));
+        setCatalogStatus({ isLoading: false, error: '' });
+      } catch {
+        if (!isMounted) return;
+        setCategories(getFallbackCategories());
+        setCatalogStatus({ isLoading: false, error: offlineText });
+      }
+    }
+
+    loadCategories();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [offlineText]);
 
   return (
     <section className="page-section">
@@ -14,6 +48,8 @@ export default function Categories() {
         <p>{t('categories.subtitle')}</p>
       </div>
       <div className="container category-grid">
+        {catalogStatus.isLoading && <p className="empty-state">{loadingText}</p>}
+        {catalogStatus.error && <p className="empty-state">{catalogStatus.error}</p>}
         {categories.map((category) => (
           <CategoryCard key={category.id} category={category} />
         ))}

@@ -5,10 +5,15 @@ import ProductCard from '../components/common/ProductCard.jsx';
 import { useLanguage } from '../context/LanguageContext.jsx';
 import { getLocalizedField } from '../utils/formatters.js';
 import {
-  filterProducts,
-  getCategories,
-  getCategoryBySlug,
+  filterProductList,
+  getCategories as getFallbackCategories,
+  getProducts as getFallbackProducts,
 } from '../services/catalogService.js';
+import {
+  getCategories as getApiCategories,
+  getProducts as getApiProducts,
+} from '../services/api.js';
+import { adaptCategories, adaptProducts } from '../utils/adapters.js';
 
 const PRODUCTS_PER_PAGE = 8;
 
@@ -17,16 +22,25 @@ export default function Products() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
+  const [categories, setCategories] = useState(getFallbackCategories);
+  const [products, setProducts] = useState(getFallbackProducts);
+  const [catalogStatus, setCatalogStatus] = useState({ isLoading: true, error: '' });
   const selectedCategory = searchParams.get('category') || 'all';
-  const categories = getCategories();
   const activeCategory =
-    selectedCategory === 'all' ? null : getCategoryBySlug(selectedCategory);
+    selectedCategory === 'all'
+      ? null
+      : categories.find((category) => category.slug === selectedCategory);
   const PreviousIcon = direction === 'rtl' ? ChevronRight : ChevronLeft;
   const NextIcon = direction === 'rtl' ? ChevronLeft : ChevronRight;
+  const loadingText = language === 'ar' ? 'جاري تحميل المنتجات...' : 'Loading products...';
+  const offlineText =
+    language === 'ar'
+      ? 'تعذر الاتصال بالخادم حاليا، يتم عرض بيانات محلية مؤقتة.'
+      : 'Backend is offline right now, local demo data is shown.';
 
   const filteredProducts = useMemo(() => {
-    return filterProducts({ category: selectedCategory, searchTerm, language });
-  }, [language, searchTerm, selectedCategory]);
+    return filterProductList(products, { category: selectedCategory, searchTerm, language });
+  }, [language, products, searchTerm, selectedCategory]);
 
   const totalPages = Math.max(1, Math.ceil(filteredProducts.length / PRODUCTS_PER_PAGE));
   const activePage = Math.min(currentPage, totalPages);
@@ -49,6 +63,47 @@ export default function Products() {
   useEffect(() => {
     setCurrentPage(1);
   }, [language, searchTerm, selectedCategory]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadCatalog() {
+      setCatalogStatus({ isLoading: true, error: '' });
+
+      const [categoriesResult, productsResult] = await Promise.allSettled([
+        getApiCategories(),
+        getApiProducts(),
+      ]);
+
+      if (!isMounted) return;
+
+      if (categoriesResult.status === 'fulfilled') {
+        setCategories(adaptCategories(categoriesResult.value));
+      } else {
+        setCategories(getFallbackCategories());
+      }
+
+      if (productsResult.status === 'fulfilled') {
+        setProducts(adaptProducts(productsResult.value));
+      } else {
+        setProducts(getFallbackProducts());
+      }
+
+      setCatalogStatus({
+        isLoading: false,
+        error:
+          categoriesResult.status === 'rejected' || productsResult.status === 'rejected'
+            ? offlineText
+            : '',
+      });
+    }
+
+    loadCatalog();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [offlineText]);
 
   const updateCategory = (category) => {
     if (category === 'all') {
@@ -101,6 +156,8 @@ export default function Products() {
       </div>
 
       <div className="container product-grid">
+        {catalogStatus.isLoading && <p className="empty-state">{loadingText}</p>}
+        {catalogStatus.error && <p className="empty-state">{catalogStatus.error}</p>}
         {paginatedProducts.map((product) => (
           <ProductCard key={product.id} product={product} />
         ))}

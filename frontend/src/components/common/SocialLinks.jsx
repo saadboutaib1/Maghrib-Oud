@@ -1,4 +1,4 @@
-import { STORE_CONFIG } from '../../config/store.js';
+import { useStoreData } from '../../context/StoreDataContext.jsx';
 
 function YouTubeIcon(props) {
   return (
@@ -68,35 +68,36 @@ function WhatsAppIcon(props) {
   );
 }
 
-const links = [
-  {
-    label: 'YouTube',
-    href: STORE_CONFIG.youtubeLink,
-    icon: YouTubeIcon,
-  },
-  {
-    label: 'TikTok',
-    href: STORE_CONFIG.tiktokLink,
-    icon: TikTokIcon,
-  },
-  {
-    label: 'Instagram',
-    href: STORE_CONFIG.instagramLink,
-    icon: InstagramIcon,
-  },
-  {
-    label: 'Facebook',
-    href: STORE_CONFIG.facebookLink,
-    icon: FacebookIcon,
-  },
-  {
-    label: 'WhatsApp',
-    href: `https://wa.me/${STORE_CONFIG.whatsappNumber.replace(/[^\d]/g, '')}`,
-    icon: WhatsAppIcon,
-  },
-];
-
 export default function SocialLinks({ compact = false }) {
+  const { socialLinks } = useStoreData();
+  const links = [
+    {
+      label: 'YouTube',
+      href: socialLinks.youtube,
+      icon: YouTubeIcon,
+    },
+    {
+      label: 'TikTok',
+      href: socialLinks.tiktok,
+      icon: TikTokIcon,
+    },
+    {
+      label: 'Instagram',
+      href: socialLinks.instagram,
+      icon: InstagramIcon,
+    },
+    {
+      label: 'Facebook',
+      href: socialLinks.facebook,
+      icon: FacebookIcon,
+    },
+    {
+      label: 'WhatsApp',
+      href: socialLinks.whatsapp,
+      icon: WhatsAppIcon,
+    },
+  ];
+
   return (
     <div className={`social-links ${compact ? 'social-links--compact' : ''}`}>
       {links.map(({ label, href, icon: Icon }) => (

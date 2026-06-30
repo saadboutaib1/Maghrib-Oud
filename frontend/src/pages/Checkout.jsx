@@ -2,9 +2,12 @@ import { MessageCircle, ShieldCheck } from 'lucide-react';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import BackButton from '../components/common/BackButton.jsx';
-import { STORE_CONFIG } from '../config/store.js';
 import { useCart } from '../context/CartContext.jsx';
 import { useLanguage } from '../context/LanguageContext.jsx';
+import { useStoreData } from '../context/StoreDataContext.jsx';
+import { createOrder } from '../services/api.js';
+import { getBackendProductId } from '../utils/adapters.js';
+import { reconcileCartItemsFromBackend } from '../utils/cartReconciliation.js';
 import { formatCurrency, getLocalizedField } from '../utils/formatters.js';
 import { isValidPhoneNumber } from '../utils/validation.js';
 import { createWhatsAppOrderUrl } from '../utils/whatsapp.js';
@@ -20,17 +23,55 @@ const initialForm = {
 export default function Checkout() {
   const [form, setForm] = useState(initialForm);
   const [error, setError] = useState('');
-  const { items, subtotal } = useCart();
+  const [cartRefreshMessage, setCartRefreshMessage] = useState('');
+  const [isRefreshingCart, setIsRefreshingCart] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { items, subtotal, replaceCartItems } = useCart();
   const { language, t } = useLanguage();
-  const deliveryFee = STORE_CONFIG.deliveryFee;
+  const { settings } = useStoreData();
+  const deliveryFee = settings.deliveryFee;
   const total = subtotal + deliveryFee;
+  const orderErrorMessage =
+    language === 'ar'
+      ? 'تعذر إنشاء الطلب في الخادم. يرجى المحاولة مرة أخرى.'
+      : 'Could not create the order on the backend. Please try again.';
+  const submittingText = language === 'ar' ? 'جاري إنشاء الطلب...' : 'Creating order...';
+  const needsCartRefresh = items.some((item) => !getBackendProductId(item));
 
   const updateField = (field, value) => {
     setError('');
+    setCartRefreshMessage('');
     setForm((current) => ({ ...current, [field]: value }));
   };
 
-  const handleSubmit = (event) => {
+  const refreshCartFromBackend = async () => {
+    setError('');
+    setCartRefreshMessage('');
+    setIsRefreshingCart(true);
+
+    try {
+      const result = await reconcileCartItemsFromBackend(items);
+
+      if (result.changed) {
+        replaceCartItems(result.items);
+      }
+
+      if (result.unresolvedItems.length > 0) {
+        setError(t('checkout.cartRefreshFailed'));
+        return { success: false, items: result.items };
+      }
+
+      setCartRefreshMessage(t('checkout.cartRefreshSuccess'));
+      return { success: true, items: result.items };
+    } catch {
+      setError(t('checkout.backendOffline'));
+      return { success: false, items };
+    } finally {
+      setIsRefreshingCart(false);
+    }
+  };
+
+  const handleSubmit = async (event) => {
     event.preventDefault();
 
     if (items.length === 0) {
@@ -48,16 +89,52 @@ export default function Checkout() {
       return;
     }
 
-    const whatsappUrl = createWhatsAppOrderUrl({
-      customer: form,
-      items,
-      subtotal,
-      deliveryFee,
-      total,
-      language,
-    });
+    let checkoutItems = items;
 
-    window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
+    if (checkoutItems.some((item) => !getBackendProductId(item))) {
+      const refreshResult = await refreshCartFromBackend();
+
+      if (!refreshResult.success) {
+        return;
+      }
+
+      checkoutItems = refreshResult.items;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const response = await createOrder({
+        customer_name: form.fullName.trim(),
+        customer_phone: form.phone.trim(),
+        city: form.city.trim(),
+        address: form.address.trim(),
+        notes: form.notes.trim(),
+        items: checkoutItems.map((item) => ({
+          product_id: getBackendProductId(item),
+          quantity: item.quantity,
+        })),
+      });
+
+      const order = response.data || {};
+      const whatsappUrl = createWhatsAppOrderUrl({
+        orderNumber: response.order_number || order.order_number,
+        customer: form,
+        items: checkoutItems,
+        subtotal: Number(order.subtotal ?? subtotal),
+        deliveryFee: Number(order.delivery_fee ?? deliveryFee),
+        total: Number(order.total ?? total),
+        language,
+        currency: settings.currency,
+        whatsappNumber: settings.whatsappNumber,
+      });
+
+      window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
+    } catch {
+      setError(orderErrorMessage);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   if (items.length === 0) {
@@ -141,10 +218,21 @@ export default function Checkout() {
             />
           </label>
           {error && <p className="form-error" aria-live="polite">{error}</p>}
+          {cartRefreshMessage && <p className="summary-note summary-note--form">{cartRefreshMessage}</p>}
+          {needsCartRefresh && (
+            <button
+              type="button"
+              className="button button--outline button--full"
+              onClick={refreshCartFromBackend}
+              disabled={isSubmitting || isRefreshingCart}
+            >
+              {isRefreshingCart ? t('checkout.refreshingCart') : t('checkout.refreshCartFromBackend')}
+            </button>
+          )}
           <p className="summary-note summary-note--form">{t('checkout.whatsappNote')}</p>
-          <button type="submit" className="button button--gold button--full">
+          <button type="submit" className="button button--gold button--full" disabled={isSubmitting}>
             <MessageCircle size={19} aria-hidden="true" />
-            {t('checkout.whatsappOrder')}
+            {isSubmitting ? submittingText : t('checkout.whatsappOrder')}
           </button>
         </form>
 
@@ -159,21 +247,21 @@ export default function Checkout() {
                 <span>
                   {getLocalizedField(item, 'name', language)} x {item.quantity}
                 </span>
-                <strong>{formatCurrency(item.price * item.quantity, language)}</strong>
+                <strong>{formatCurrency(item.price * item.quantity, language, settings.currency)}</strong>
               </div>
             ))}
           </div>
           <div className="summary-row">
             <span>{t('common.subtotal')}</span>
-            <strong>{formatCurrency(subtotal, language)}</strong>
+            <strong>{formatCurrency(subtotal, language, settings.currency)}</strong>
           </div>
           <div className="summary-row">
             <span>{t('common.deliveryFee')}</span>
-            <strong>{formatCurrency(deliveryFee, language)}</strong>
+            <strong>{formatCurrency(deliveryFee, language, settings.currency)}</strong>
           </div>
           <div className="summary-row summary-row--total">
             <span>{t('common.total')}</span>
-            <strong>{formatCurrency(total, language)}</strong>
+            <strong>{formatCurrency(total, language, settings.currency)}</strong>
           </div>
           <div className="payment-note">
             <span>{t('common.paymentMethod')}</span>

@@ -1,7 +1,7 @@
 import { CreditCard, MapPin, MessageCircle, Send } from 'lucide-react';
 import { useState } from 'react';
-import { STORE_CONFIG } from '../config/store.js';
 import { useLanguage } from '../context/LanguageContext.jsx';
+import { useStoreData } from '../context/StoreDataContext.jsx';
 import { isValidPhoneNumber } from '../utils/validation.js';
 
 const infoIcons = [MessageCircle, CreditCard, MapPin];
@@ -71,15 +71,15 @@ function WhatsAppIcon(props) {
 
 export default function Contact() {
   const { t } = useLanguage();
+  const { getWhatsAppUrl, socialLinks: storeSocialLinks } = useStoreData();
   const [formData, setFormData] = useState({ fullName: '', phone: '', message: '' });
   const [error, setError] = useState('');
-  const whatsappUrl = `https://wa.me/${STORE_CONFIG.whatsappNumber.replace(/[^\d]/g, '')}`;
   const socialLinks = [
-    { label: 'WhatsApp', href: whatsappUrl, icon: WhatsAppIcon },
-    { label: 'Instagram', href: STORE_CONFIG.instagramLink, icon: InstagramIcon },
-    { label: 'Facebook', href: STORE_CONFIG.facebookLink, icon: FacebookIcon },
-    { label: 'TikTok', href: STORE_CONFIG.tiktokLink, icon: TikTokIcon },
-    { label: 'YouTube', href: STORE_CONFIG.youtubeLink, icon: YouTubeIcon },
+    { label: 'WhatsApp', href: storeSocialLinks.whatsapp, icon: WhatsAppIcon },
+    { label: 'Instagram', href: storeSocialLinks.instagram, icon: InstagramIcon },
+    { label: 'Facebook', href: storeSocialLinks.facebook, icon: FacebookIcon },
+    { label: 'TikTok', href: storeSocialLinks.tiktok, icon: TikTokIcon },
+    { label: 'YouTube', href: storeSocialLinks.youtube, icon: YouTubeIcon },
   ];
 
   const updateField = (field, value) => {
@@ -111,7 +111,7 @@ export default function Contact() {
       `${t('contact.form.message')}: ${message}`,
     ].join('\n');
 
-    window.open(`${whatsappUrl}?text=${encodeURIComponent(whatsappMessage)}`, '_blank', 'noopener,noreferrer');
+    window.open(getWhatsAppUrl(whatsappMessage), '_blank', 'noopener,noreferrer');
   };
 
   return (

@@ -1,47 +1,45 @@
 import { categories as demoCategories } from '../data/categories.js';
 import { products as demoProducts } from '../data/products.js';
 import { getLocalizedField } from '../utils/formatters.js';
+import { adaptCategories, adaptProducts } from '../utils/adapters.js';
 
-export const LARAVEL_API_ENDPOINTS = {
-  categories: '/api/categories',
-  products: '/api/products',
-  featuredProducts: '/api/products/featured',
-  deliveryFee: '/api/delivery-fee',
-  checkoutQuote: '/api/checkout/quote',
-};
+const localCategories = adaptCategories(demoCategories);
+const localProducts = adaptProducts(demoProducts);
 
 export function getCategories() {
-  return demoCategories;
+  return localCategories;
 }
 
 export function getCategoryBySlug(slug) {
-  return demoCategories.find((category) => category.slug === slug);
+  return localCategories.find((category) => category.slug === slug);
 }
 
 export function getProducts() {
-  return demoProducts;
+  return localProducts;
 }
 
 export function getProductById(productId) {
-  return demoProducts.find((product) => product.id === productId);
+  return localProducts.find(
+    (product) => String(product.id) === String(productId) || product.slug === productId
+  );
 }
 
 export function getFeaturedProducts(limit = 4) {
-  return demoProducts.filter((product) => product.isFeatured).slice(0, limit);
+  return localProducts.filter((product) => product.isFeatured).slice(0, limit);
 }
 
 export function getRelatedProducts(product, limit = 3) {
   if (!product) return [];
 
-  return demoProducts
+  return localProducts
     .filter((item) => item.category === product.category && item.id !== product.id)
     .slice(0, limit);
 }
 
-export function filterProducts({ category = 'all', searchTerm = '', language = 'ar' } = {}) {
+export function filterProductList(products, { category = 'all', searchTerm = '', language = 'ar' } = {}) {
   const normalizedSearch = searchTerm.trim().toLowerCase();
 
-  return demoProducts.filter((product) => {
+  return products.filter((product) => {
     const matchesCategory = category === 'all' || product.category === category;
     const localizedName = getLocalizedField(product, 'name', language).toLowerCase();
     const localizedDescription = getLocalizedField(product, 'description', language).toLowerCase();
@@ -52,4 +50,8 @@ export function filterProducts({ category = 'all', searchTerm = '', language = '
 
     return matchesCategory && matchesSearch;
   });
+}
+
+export function filterProducts(options = {}) {
+  return filterProductList(localProducts, options);
 }

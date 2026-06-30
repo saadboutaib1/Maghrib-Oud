@@ -4,6 +4,7 @@ import BackButton from '../components/common/BackButton.jsx';
 import QuantityStepper from '../components/common/QuantityStepper.jsx';
 import { useCart } from '../context/CartContext.jsx';
 import { useLanguage } from '../context/LanguageContext.jsx';
+import { useStoreData } from '../context/StoreDataContext.jsx';
 import { formatCurrency, getLocalizedField } from '../utils/formatters.js';
 
 export default function Cart() {
@@ -17,6 +18,7 @@ export default function Cart() {
     decreaseQuantity,
   } = useCart();
   const { language, t } = useLanguage();
+  const { settings } = useStoreData();
 
   if (items.length === 0) {
     return (
@@ -50,7 +52,7 @@ export default function Cart() {
               <img src={item.image} alt={getLocalizedField(item, 'name', language)} />
               <div className="cart-item__content">
                 <h2>{getLocalizedField(item, 'name', language)}</h2>
-                <span>{formatCurrency(item.price, language)}</span>
+                <span>{formatCurrency(item.price, language, settings.currency)}</span>
                 <QuantityStepper
                   value={item.quantity}
                   max={item.stock}
@@ -62,7 +64,7 @@ export default function Cart() {
                 />
               </div>
               <div className="cart-item__total">
-                <strong>{formatCurrency(item.price * item.quantity, language)}</strong>
+                <strong>{formatCurrency(item.price * item.quantity, language, settings.currency)}</strong>
                 <button
                   type="button"
                   className="icon-button icon-button--danger"
@@ -80,11 +82,11 @@ export default function Cart() {
           <h2>{t('cart.summary')}</h2>
           <div className="summary-row">
             <span>{t('common.subtotal')}</span>
-            <strong>{formatCurrency(subtotal, language)}</strong>
+            <strong>{formatCurrency(subtotal, language, settings.currency)}</strong>
           </div>
           <div className="summary-row summary-row--total">
             <span>{t('common.total')}</span>
-            <strong>{formatCurrency(total, language)}</strong>
+            <strong>{formatCurrency(total, language, settings.currency)}</strong>
           </div>
           <p className="summary-note">{t('cart.deliveryNote')}</p>
           <Link to="/checkout" className="button button--gold button--full">

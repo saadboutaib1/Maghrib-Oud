@@ -16,6 +16,46 @@ function clampQuantity(quantity, stock) {
   return Math.max(1, Math.min(quantity, stock || 1));
 }
 
+function getBackendId(product) {
+  const id = product?.backendId || product?.id;
+  return /^\d+$/.test(String(id)) ? Number(id) : null;
+}
+
+function getProductSlug(product) {
+  if (product?.slug) return String(product.slug);
+  return /^\d+$/.test(String(product?.id)) ? '' : String(product?.id || '');
+}
+
+function normalizeText(value = '') {
+  return String(value).trim().toLowerCase();
+}
+
+function isSameProduct(firstProduct, secondProduct) {
+  const firstBackendId = getBackendId(firstProduct);
+  const secondBackendId = getBackendId(secondProduct);
+
+  if (firstBackendId && secondBackendId) {
+    return firstBackendId === secondBackendId;
+  }
+
+  const firstSlug = getProductSlug(firstProduct);
+  const secondSlug = getProductSlug(secondProduct);
+
+  if (firstSlug && secondSlug) {
+    return firstSlug === secondSlug;
+  }
+
+  const firstArabicName = normalizeText(firstProduct?.name_ar);
+  const secondArabicName = normalizeText(secondProduct?.name_ar);
+  const firstEnglishName = normalizeText(firstProduct?.name_en);
+  const secondEnglishName = normalizeText(secondProduct?.name_en);
+
+  return Boolean(
+    (firstArabicName && firstArabicName === secondArabicName) ||
+      (firstEnglishName && firstEnglishName === secondEnglishName)
+  );
+}
+
 export function CartProvider({ children }) {
   const [items, setItems] = useState(getInitialCart);
 
@@ -27,12 +67,15 @@ export function CartProvider({ children }) {
     if (!product || product.stock <= 0) return;
 
     setItems((currentItems) => {
-      const existingItem = currentItems.find((item) => item.id === product.id);
+      const existingItem = currentItems.find((item) => isSameProduct(item, product));
 
       if (existingItem) {
         return currentItems.map((item) =>
-          item.id === product.id
-            ? { ...item, quantity: clampQuantity(item.quantity + quantity, product.stock) }
+          isSameProduct(item, product)
+            ? {
+                ...product,
+                quantity: clampQuantity(item.quantity + quantity, product.stock),
+              }
             : item
         );
       }
@@ -73,6 +116,10 @@ export function CartProvider({ children }) {
 
   const clearCart = () => setItems([]);
 
+  const replaceCartItems = (nextItems) => {
+    setItems(Array.isArray(nextItems) ? nextItems : []);
+  };
+
   const subtotal = useMemo(
     () => items.reduce((sum, item) => sum + item.price * item.quantity, 0),
     [items]
@@ -91,6 +138,7 @@ export function CartProvider({ children }) {
       increaseQuantity,
       decreaseQuantity,
       clearCart,
+      replaceCartItems,
       subtotal,
       total: subtotal,
       itemCount,

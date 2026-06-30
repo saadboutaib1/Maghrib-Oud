@@ -2,6 +2,7 @@ import { ShoppingBag } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useCart } from '../../context/CartContext.jsx';
 import { useLanguage } from '../../context/LanguageContext.jsx';
+import { useStoreData } from '../../context/StoreDataContext.jsx';
 import { useToast } from '../../context/ToastContext.jsx';
 import { getCategoryBySlug } from '../../services/catalogService.js';
 import { formatCurrency, getLocalizedField } from '../../utils/formatters.js';
@@ -10,6 +11,7 @@ export default function ProductCard({ product }) {
   const { addToCart } = useCart();
   const { showToast } = useToast();
   const { language, t } = useLanguage();
+  const { settings } = useStoreData();
   const productName = getLocalizedField(product, 'name', language);
   const isAvailable = product.stock > 0;
   const category = getCategoryBySlug(product.category);
@@ -38,9 +40,9 @@ export default function ProductCard({ product }) {
         <p>{getLocalizedField(product, 'description', language)}</p>
         <div className="product-card__footer">
           <div>
-            <strong>{formatCurrency(product.price, language)}</strong>
+            <strong>{formatCurrency(product.price, language, settings.currency)}</strong>
             {product.oldPrice && (
-              <span className="old-price">{formatCurrency(product.oldPrice, language)}</span>
+              <span className="old-price">{formatCurrency(product.oldPrice, language, settings.currency)}</span>
             )}
           </div>
           <span className={`stock ${isAvailable ? 'stock--in' : 'stock--out'}`}>

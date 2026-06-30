@@ -1,25 +1,76 @@
 import { ShoppingBag } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import BackButton from '../components/common/BackButton.jsx';
 import QuantityStepper from '../components/common/QuantityStepper.jsx';
 import { useCart } from '../context/CartContext.jsx';
 import { useLanguage } from '../context/LanguageContext.jsx';
+import { useStoreData } from '../context/StoreDataContext.jsx';
 import { useToast } from '../context/ToastContext.jsx';
 import { formatCurrency, getLocalizedField } from '../utils/formatters.js';
 import {
   getCategoryBySlug,
   getProductById,
 } from '../services/catalogService.js';
+import { getProduct as getApiProduct } from '../services/api.js';
+import { adaptProduct } from '../utils/adapters.js';
 import NotFound from './NotFound.jsx';
 
 export default function ProductDetails() {
   const { productId } = useParams();
-  const product = getProductById(productId);
+  const [product, setProduct] = useState(() => getProductById(productId));
+  const [productStatus, setProductStatus] = useState({ isLoading: true, error: '' });
   const [quantity, setQuantity] = useState(1);
   const { addToCart } = useCart();
   const { showToast } = useToast();
   const { language, t } = useLanguage();
+  const { settings } = useStoreData();
+  const loadingText = language === 'ar' ? 'جاري تحميل المنتج...' : 'Loading product...';
+  const offlineText =
+    language === 'ar'
+      ? 'تعذر الاتصال بالخادم حاليا، يتم عرض بيانات محلية مؤقتة.'
+      : 'Backend is offline right now, local demo data is shown.';
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadProduct() {
+      setProductStatus({ isLoading: true, error: '' });
+
+      try {
+        const apiProduct = await getApiProduct(productId);
+        if (!isMounted) return;
+        setProduct(adaptProduct(apiProduct));
+        setProductStatus({ isLoading: false, error: '' });
+      } catch {
+        if (!isMounted) return;
+        const fallbackProduct = getProductById(productId);
+        setProduct(fallbackProduct);
+        setProductStatus({
+          isLoading: false,
+          error: fallbackProduct ? offlineText : '',
+        });
+      }
+    }
+
+    loadProduct();
+    setQuantity(1);
+
+    return () => {
+      isMounted = false;
+    };
+  }, [offlineText, productId]);
+
+  if (productStatus.isLoading && !product) {
+    return (
+      <section className="page-section product-detail-page">
+        <div className="container empty-panel">
+          <ShoppingBag size={44} aria-hidden="true" />
+          <h1>{loadingText}</h1>
+        </div>
+      </section>
+    );
+  }
 
   if (!product) {
     return <NotFound />;
@@ -49,11 +100,12 @@ export default function ProductDetails() {
             <span className={`stock ${product.stock > 0 ? 'stock--in' : 'stock--out'}`}>
               {product.stock > 0 ? t('common.inStock') : t('common.outOfStock')}
             </span>
+            {productStatus.error && <p className="form-error">{productStatus.error}</p>}
             <p>{getLocalizedField(product, 'description', language)}</p>
             <div className="price-row">
-              <strong>{formatCurrency(product.price, language)}</strong>
+              <strong>{formatCurrency(product.price, language, settings.currency)}</strong>
               {product.oldPrice && (
-                <span className="old-price">{formatCurrency(product.oldPrice, language)}</span>
+                <span className="old-price">{formatCurrency(product.oldPrice, language, settings.currency)}</span>
               )}
             </div>
             <div className="detail-actions">
