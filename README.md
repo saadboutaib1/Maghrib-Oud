@@ -1,16 +1,16 @@
 # Najem Store
 
-Najem Store is a full-stack e-commerce app for oud, bakhoor, perfumes, and miswak. It includes an Arabic-first customer storefront, a Laravel API, and an admin area for managing products, categories, orders, store settings, and social links.
+Najem Store is a web store for oud, bakhoor, perfumes, and miswak. The project is split into a React storefront, a Laravel API, and an admin dashboard for catalog and order management.
 
 ## Features
 
-- Arabic-first storefront with RTL layout and English translation support.
-- Product categories, product listing, search, filters, product details, cart, and checkout.
-- Cash-on-delivery checkout that creates an order and opens a WhatsApp confirmation message.
-- Laravel API for public catalog data, settings, social links, and orders.
-- Protected admin area for catalog management, order tracking, profile/password updates, settings, and social links.
-- Image upload support for products and categories.
-- PWA basics: manifest, service worker, offline page, and local fallback data.
+- RTL Arabic storefront with English language support.
+- Category browsing, product search, filters, product details, cart, and checkout.
+- Cash-on-delivery orders with a ready WhatsApp confirmation message.
+- Public API for catalog data, store settings, social links, and orders.
+- Admin dashboard for products, categories, orders, profile, settings, and social links.
+- Image uploads for products and categories.
+- Manifest, service worker, and offline page for the storefront.
 
 ## Tech Stack
 
@@ -132,8 +132,3 @@ npm run build
 - [Database schema](docs/database-schema.md)
 - [Checkout flow](docs/whatsapp-checkout-flow.md)
 - [Branding](docs/branding.md)
-- [Development plan](docs/development-plan.md)
-
-## Status
-
-The storefront, admin interface, and Laravel API are implemented for local development. The frontend can read from the API and keeps local fallback data so the customer pages remain usable while the backend is offline.
