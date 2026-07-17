@@ -1,4 +1,4 @@
-const DEFAULT_API_BASE_URL = '/api';
+const DEFAULT_API_BASE_URL = import.meta.env.DEV ? 'http://127.0.0.1:8000/api' : '/api';
 
 function normalizeApiBaseUrl(value) {
   const candidate = String(value || DEFAULT_API_BASE_URL).trim().replace(/\/+$/, '');
@@ -7,7 +7,7 @@ function normalizeApiBaseUrl(value) {
     return DEFAULT_API_BASE_URL;
   }
 
-  if (candidate === DEFAULT_API_BASE_URL || candidate.endsWith('/api')) {
+  if (candidate === '/api' || candidate.endsWith('/api')) {
     return candidate;
   }
 
