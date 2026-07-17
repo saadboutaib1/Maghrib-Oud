@@ -80,7 +80,7 @@ export function getProduct(id) {
 }
 
 export function getProductBySlug(slug) {
-  return request(`/products/slug/${encodeURIComponent(slug)}`);
+  return request(`/products/${encodeURIComponent(slug)}`);
 }
 
 export function getSettings() {

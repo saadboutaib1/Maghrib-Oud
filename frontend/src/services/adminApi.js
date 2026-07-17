@@ -17,15 +17,12 @@ export function getAdminToken() {
   if (adminToken) return adminToken;
 
   try {
-    adminToken = sessionStorage.getItem(ADMIN_TOKEN_KEY) || null;
-    const legacyToken = localStorage.getItem(ADMIN_TOKEN_KEY);
+    adminToken = localStorage.getItem(ADMIN_TOKEN_KEY) || sessionStorage.getItem(ADMIN_TOKEN_KEY) || null;
 
-    if (!adminToken && legacyToken) {
-      adminToken = legacyToken;
-      sessionStorage.setItem(ADMIN_TOKEN_KEY, legacyToken);
+    if (adminToken) {
+      localStorage.setItem(ADMIN_TOKEN_KEY, adminToken);
+      sessionStorage.removeItem(ADMIN_TOKEN_KEY);
     }
-
-    localStorage.removeItem(ADMIN_TOKEN_KEY);
   } catch {
     adminToken = null;
   }
@@ -41,7 +38,7 @@ export function setAdminToken(token) {
     sessionStorage.removeItem(ADMIN_TOKEN_KEY);
 
     if (adminToken) {
-      sessionStorage.setItem(ADMIN_TOKEN_KEY, adminToken);
+      localStorage.setItem(ADMIN_TOKEN_KEY, adminToken);
     }
   } catch {
     // Storage can be unavailable in private or restricted browser contexts.
@@ -63,6 +60,9 @@ function isFormData(body) {
   return typeof FormData !== 'undefined' && body instanceof FormData;
 }
 
+function normalizeAdminProfile(profile) {
+  return profile?.admin || profile;
+}
 function prepareMutationPayload(data, method = 'PUT') {
   if (!isFormData(data)) {
     return { method, body: data };
@@ -153,15 +153,15 @@ export function logout() {
   return adminRequest('/admin/logout', { method: 'POST' });
 }
 
-export function getProfile() {
-  return adminRequest('/admin/profile');
+export async function getProfile() {
+  return normalizeAdminProfile(await adminRequest('/admin/profile'));
 }
 
-export function updateProfile(data) {
-  return adminRequest('/admin/profile', {
+export async function updateProfile(data) {
+  return normalizeAdminProfile(await adminRequest('/admin/profile', {
     method: 'PUT',
     body: data,
-  });
+  }));
 }
 
 export function changePassword(data) {
