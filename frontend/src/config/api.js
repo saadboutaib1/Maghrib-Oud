@@ -16,6 +16,10 @@ function normalizeApiBaseUrl(value) {
 
 export const API_BASE_URL = normalizeApiBaseUrl(import.meta.env.VITE_API_URL);
 
+if (import.meta.env.DEV) {
+  console.info('[MAGHRIB OUD] API base URL:', API_BASE_URL);
+}
+
 export function buildApiUrl(endpoint, params = {}) {
   const path = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
   const rawUrl = `${API_BASE_URL}${path}`;

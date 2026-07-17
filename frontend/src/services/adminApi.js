@@ -75,6 +75,26 @@ function prepareMutationPayload(data, method = 'PUT') {
 
   return { method, body: data };
 }
+
+async function parseJsonPayload(response) {
+  const text = await response.text();
+
+  if (!text) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(text);
+  } catch (error) {
+    const contentType = response.headers.get('content-type') || 'unknown';
+
+    throw new AdminApiError(`Admin API returned a non-JSON response (${contentType}).`, response.status, {
+      preview: text.slice(0, 160),
+      cause: error,
+    });
+  }
+}
+
 async function adminRequest(endpoint, options = {}) {
   const {
     method = 'GET',
@@ -99,7 +119,7 @@ async function adminRequest(endpoint, options = {}) {
       body: body ? (formDataBody ? body : JSON.stringify(body)) : undefined,
     });
 
-    const payload = await response.json().catch(() => null);
+    const payload = await parseJsonPayload(response);
     const message = payload?.message || `Admin API request failed with status ${response.status}`;
 
     if (!response.ok || payload?.success === false) {

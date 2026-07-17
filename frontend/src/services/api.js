@@ -9,6 +9,25 @@ export class ApiError extends Error {
   }
 }
 
+async function parseJsonPayload(response) {
+  const text = await response.text();
+
+  if (!text) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(text);
+  } catch (error) {
+    const contentType = response.headers.get('content-type') || 'unknown';
+
+    throw new ApiError(`API returned a non-JSON response (${contentType}).`, response.status, {
+      preview: text.slice(0, 160),
+      cause: error,
+    });
+  }
+}
+
 async function request(endpoint, options = {}) {
   const { params, body, method = 'GET', raw = false } = options;
 
@@ -23,7 +42,7 @@ async function request(endpoint, options = {}) {
       body: body ? JSON.stringify(body) : undefined,
     });
 
-    const payload = await response.json().catch(() => null);
+    const payload = await parseJsonPayload(response);
     const message = payload?.message || `API request failed with status ${response.status}`;
 
     if (!response.ok || payload?.success === false) {

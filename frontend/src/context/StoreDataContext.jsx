@@ -6,29 +6,39 @@ import { buildWhatsAppLink, buildWhatsAppUrl } from '../utils/whatsappLink.js';
 
 const StoreDataContext = createContext(null);
 
+function asObject(value) {
+  return value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+}
+
+function asArray(value) {
+  return Array.isArray(value) ? value : [];
+}
+
 function normalizeSettings(settings = {}) {
-  const whatsappNumber = settings.whatsapp_number || settings.whatsappNumber || STORE_CONFIG.whatsappNumber;
+  const source = asObject(settings);
+  const whatsappNumber = source.whatsapp_number || source.whatsappNumber || STORE_CONFIG.whatsappNumber;
 
   return {
-    name: settings.store_name || settings.name || STORE_CONFIG.name,
+    name: source.store_name || source.name || STORE_CONFIG.name,
     whatsappNumber,
-    currency: settings.currency || STORE_CONFIG.currency,
-    deliveryFee: Number(settings.delivery_fee ?? settings.deliveryFee ?? STORE_CONFIG.deliveryFee),
-    defaultLanguage: settings.default_language || settings.defaultLanguage || STORE_CONFIG.defaultLanguage,
-    paymentMethod: settings.payment_method || 'cash_on_delivery',
-    country: settings.country || 'Morocco',
-    facebookLink: settings.facebook || STORE_CONFIG.facebookLink,
-    instagramLink: settings.instagram || STORE_CONFIG.instagramLink,
-    tiktokLink: settings.tiktok || STORE_CONFIG.tiktokLink,
-    youtubeLink: settings.youtube || STORE_CONFIG.youtubeLink,
+    currency: source.currency || STORE_CONFIG.currency,
+    deliveryFee: Number(source.delivery_fee ?? source.deliveryFee ?? STORE_CONFIG.deliveryFee),
+    defaultLanguage: source.default_language || source.defaultLanguage || STORE_CONFIG.defaultLanguage,
+    paymentMethod: source.payment_method || 'cash_on_delivery',
+    country: source.country || 'Morocco',
+    facebookLink: source.facebook || STORE_CONFIG.facebookLink,
+    instagramLink: source.instagram || STORE_CONFIG.instagramLink,
+    tiktokLink: source.tiktok || STORE_CONFIG.tiktokLink,
+    youtubeLink: source.youtube || STORE_CONFIG.youtubeLink,
     whatsappLink: buildWhatsAppLink(whatsappNumber, STORE_CONFIG.whatsappNumber),
-    buy2Offer: normalizeBuy2Offer(settings),
-    loyalty: normalizeLoyaltySettings(settings),
+    buy2Offer: normalizeBuy2Offer(source),
+    loyalty: normalizeLoyaltySettings(source),
   };
 }
 
-function normalizeSocialLinks(links = [], settings) {
-  const fromApi = links.reduce((currentLinks, link) => {
+function normalizeSocialLinks(links = [], settings = fallbackSettings) {
+  const safeSettings = asObject(settings);
+  const fromApi = asArray(links).reduce((currentLinks, link) => {
     if (!link?.platform || !link?.url) return currentLinks;
 
     return {
@@ -38,15 +48,15 @@ function normalizeSocialLinks(links = [], settings) {
   }, {});
 
   return {
-    whatsapp: settings.whatsappLink || fromApi.whatsapp,
-    facebook: fromApi.facebook || settings.facebookLink,
-    instagram: fromApi.instagram || settings.instagramLink,
-    tiktok: fromApi.tiktok || settings.tiktokLink,
-    youtube: fromApi.youtube || settings.youtubeLink,
+    whatsapp: safeSettings.whatsappLink || fromApi.whatsapp || fallbackSettings.whatsappLink,
+    facebook: fromApi.facebook || safeSettings.facebookLink || fallbackSettings.facebookLink,
+    instagram: fromApi.instagram || safeSettings.instagramLink || fallbackSettings.instagramLink,
+    tiktok: fromApi.tiktok || safeSettings.tiktokLink || fallbackSettings.tiktokLink,
+    youtube: fromApi.youtube || safeSettings.youtubeLink || fallbackSettings.youtubeLink,
   };
 }
 
-const fallbackSettings = normalizeSettings();
+const fallbackSettings = normalizeSettings(STORE_CONFIG);
 const fallbackSocialLinks = normalizeSocialLinks([], fallbackSettings);
 
 export function StoreDataProvider({ children }) {
@@ -95,13 +105,15 @@ export function StoreDataProvider({ children }) {
 
   const value = useMemo(
     () => ({
-      settings,
-      socialLinks,
+      settings: settings || fallbackSettings,
+      socialLinks: socialLinks || fallbackSocialLinks,
       isLoading,
       error,
       refreshStoreData,
       getWhatsAppUrl: (message = '') => {
-        return buildWhatsAppUrl(settings.whatsappNumber, message, STORE_CONFIG.whatsappNumber);
+        const currentSettings = settings || fallbackSettings;
+
+        return buildWhatsAppUrl(currentSettings.whatsappNumber, message, STORE_CONFIG.whatsappNumber);
       },
     }),
     [error, isLoading, refreshStoreData, settings, socialLinks]
