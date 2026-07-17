@@ -3,6 +3,7 @@
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Http\Middleware\HandleCors;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -22,9 +23,14 @@ return Application::configure(basePath: dirname(__DIR__))
             'admin.active' => EnsureAdminIsActive::class,
         ]);
 
-        $middleware->api(append: [
-            SecurityHeaders::class,
-        ]);
+        $middleware->api(
+            prepend: [
+                HandleCors::class,
+            ],
+            append: [
+                SecurityHeaders::class,
+            ],
+        );
 
         $middleware->redirectGuestsTo(fn () => null);
     })

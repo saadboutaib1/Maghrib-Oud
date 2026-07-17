@@ -4,11 +4,17 @@ $splitOrigins = static function (?string $value): array {
     return array_values(array_filter(array_map('trim', explode(',', (string) $value))));
 };
 
+$productionOrigins = [
+    'https://maghrib-oud.vercel.app',
+    'https://maghrib-oud.infinityfree.me',
+];
+
 $localOrigins = in_array(env('APP_ENV'), ['local', 'testing'], true)
     ? ['http://localhost:5173', 'http://127.0.0.1:5173']
     : [];
 
 $allowedOrigins = array_values(array_unique(array_filter(array_merge(
+    $productionOrigins,
     $splitOrigins(env('FRONTEND_URL')),
     $splitOrigins(env('CORS_ALLOWED_ORIGINS')),
     $localOrigins

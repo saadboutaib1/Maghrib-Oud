@@ -53,3 +53,6 @@ tmp/
 
 # PWA generated files
 frontend/public/workbox-*.js
+# Deployment upload packages
+/deploy/infinityfree-package/
+/deploy/*.zip

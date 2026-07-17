@@ -1,42 +1,78 @@
 # InfinityFree Deployment Helpers
 
-These files are examples for deploying the Laravel backend to InfinityFree shared hosting.
+These files help you prepare the MAGHRIB OUD Laravel backend for manual upload to InfinityFree shared hosting.
 
-Do not commit real `.env` files, database dumps, `vendor`, or uploaded images.
+Do not commit real `.env` files, database dumps, `vendor`, uploaded images, or hosting credentials.
 
-## Recommended Method: Method A
+## Recommended Method
 
-Upload the whole prepared Laravel backend into `htdocs`, then place the example `.htaccess` in `htdocs/.htaccess`. This keeps `public/index.php` unchanged and avoids editing Laravel bootstrap paths.
+Use Method A for this project:
 
-The root `.htaccess` forwards requests to `public/` and blocks direct access to sensitive Laravel folders.
+1. Prepare the Laravel backend locally.
+2. Upload the whole prepared backend package into InfinityFree `htdocs`.
+3. Copy this folder's `.htaccess` file to `htdocs/.htaccess`.
+4. Keep `backend/public/index.php` unchanged.
+5. Keep `backend/public/.htaccess` unchanged.
 
-## Method B
-
-Move the contents of `backend/public` into `htdocs` and edit `index.php` paths to point to the backend folder outside `htdocs`. This can be cleaner, but it only works if the hosting account lets you place the Laravel app outside the web root. On InfinityFree, Method A is usually easier and safer for this project.
+This method works better on InfinityFree because the free plan does not provide SSH, Composer, Artisan, or an easy custom document root.
 
 ## Files In This Folder
 
-- `.htaccess`: example root rewrite file for `htdocs`.
-- `env.example`: production `.env` template for InfinityFree placeholders.
+- `.htaccess`: root rewrite file for `htdocs`; it forwards requests to Laravel `public/`.
+- `env.example`: InfinityFree `.env` template with real non-secret DB host/name/user and a password placeholder.
+
+## Manual Upload Notes
+
+Include `vendor` inside the manual ZIP or FTP upload because InfinityFree cannot run Composer on the server.
+
+Do not commit `vendor` to Git.
+
+Do not upload frontend `node_modules`, frontend `dist`, `.git`, local logs, local `.env` files, or SQL dumps unless you are importing them through phpMyAdmin.
+
+## Database
+
+Create the InfinityFree MySQL database, then import the prepared SQL file through InfinityFree phpMyAdmin.
+
+Configured placeholders:
+
+```env
+DB_HOST=sql311.infinityfree.com
+DB_PORT=3306
+DB_DATABASE=if0_42434243_maghrib_oud
+DB_USERNAME=if0_42434243
+DB_PASSWORD=YOUR_INFINITYFREE_DB_PASSWORD
+```
+
+The real password must be added manually in the server `.env` file only.
 
 ## Uploads
 
-For InfinityFree, set:
+For dashboard image uploads on InfinityFree, use:
 
 ```env
 UPLOADS_DISK=infinityfree_public
 ```
 
-Uploaded product and category images will be written to:
+Uploaded product and category images will be stored in:
 
 ```text
 htdocs/public/uploads
 ```
 
-They will be served publicly from:
+They will be served from:
 
 ```text
-https://YOUR_INFINITYFREE_DOMAIN/uploads/...
+https://maghrib-oud.infinityfree.me/uploads/...
 ```
 
 No `php artisan storage:link` command is required on the InfinityFree server for this upload mode.
+
+## First Backend Test
+
+After upload and database import, open:
+
+```text
+https://maghrib-oud.infinityfree.me/api/categories
+```
+
+You should see JSON, not a Laravel error page.

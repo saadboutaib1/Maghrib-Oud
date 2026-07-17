@@ -1,28 +1,28 @@
-# InfinityFree Deployment Guide - MAGHRIB OUD / Najem Store Backend
+# InfinityFree Deployment Guide - MAGHRIB OUD Backend
 
-This guide explains how to deploy the Laravel backend to InfinityFree shared hosting while keeping the React/Vite frontend on Vercel.
+This guide explains how to deploy the MAGHRIB OUD Laravel backend to InfinityFree shared hosting while the React/Vite frontend stays on Vercel.
 
-InfinityFree does not provide SSH, Composer, Artisan, Git deploys, or a configurable document root on the free hosting plan. Prepare everything locally, upload the finished backend manually, and import the database through phpMyAdmin.
+InfinityFree free hosting does not provide SSH, Composer, Artisan, Git deploys, or an easy custom document root. Prepare the backend locally, upload the finished Laravel package manually, and import the database through phpMyAdmin.
 
-References:
-
-- InfinityFree Laravel guide: https://forum.infinityfree.com/t/how-to-install-a-laravel-site-on-infinityfree/118578
-- InfinityFree `.htaccess` Laravel method: https://forum.infinityfree.com/t/htaccess-for-laravel/24518
-
-## Deployment Summary
+## Target
 
 - Backend host: InfinityFree
-- Backend upload location: `htdocs`
+- Backend domain: `https://maghrib-oud.infinityfree.me`
+- Backend upload folder: `htdocs`
 - Database: InfinityFree MySQL
 - Frontend host: Vercel
-- Recommended Laravel method for this project: Method A
-- Uploaded image storage on InfinityFree: `htdocs/public/uploads`
+- Recommended method: upload the whole Laravel backend into `htdocs` and use a root `.htaccess` rewrite to `public/`
 
-## 1. Create InfinityFree Hosting
+## 1. InfinityFree Account And Hosting
 
 1. Create an InfinityFree account.
-2. Create a hosting account.
-3. Choose the free subdomain or connect your own domain.
+2. Create a new hosting account.
+3. Use the free domain/subdomain:
+
+```text
+maghrib-oud.infinityfree.me
+```
+
 4. Open the hosting control panel.
 5. Open File Manager or prepare FTP credentials.
 6. Confirm the web root folder is named:
@@ -31,36 +31,24 @@ References:
 htdocs
 ```
 
-## 2. Create InfinityFree MySQL Database
+## 2. InfinityFree MySQL Database
 
-1. Open the InfinityFree control panel.
-2. Go to MySQL Databases.
-3. Create a new database.
-4. Save these values:
+Use the MySQL database values below. The password must be added manually later and must not be committed.
 
-```text
-DB_HOST
-DB_DATABASE
-DB_USERNAME
-DB_PASSWORD
+```env
+DB_CONNECTION=mysql
+DB_HOST=sql311.infinityfree.com
 DB_PORT=3306
+DB_DATABASE=if0_42434243_maghrib_oud
+DB_USERNAME=if0_42434243
+DB_PASSWORD=YOUR_INFINITYFREE_DB_PASSWORD
 ```
 
-Use the database host shown by InfinityFree. It is usually not `localhost`.
+Keep the real DB password only in InfinityFree and in the production `.env` file you upload manually.
 
-## 3. Recommended Method: Method A
+## 3. Shared Hosting Structure
 
-Upload the whole prepared Laravel backend into `htdocs` and add a root `.htaccess` file that sends all requests to the Laravel `public` folder.
-
-This is the method chosen for MAGHRIB OUD because it:
-
-- Works without SSH.
-- Works without changing `public/index.php`.
-- Keeps local development unchanged.
-- Matches InfinityFree's documented Laravel workaround.
-- Avoids manually moving Laravel bootstrap paths.
-
-Expected server structure:
+Recommended structure after upload:
 
 ```text
 htdocs/
@@ -89,7 +77,7 @@ Copy `deploy/infinityfree/.htaccess` to:
 htdocs/.htaccess
 ```
 
-The file contains:
+That file forwards requests to Laravel `public/`:
 
 ```apache
 <IfModule mod_rewrite.c>
@@ -98,15 +86,11 @@ The file contains:
 </IfModule>
 ```
 
-Do not delete or modify `htdocs/public/.htaccess`; Laravel needs it for routing requests to `index.php`.
+Keep `backend/public/index.php` unchanged. Its paths already match the whole-backend-in-htdocs method.
 
-## 4. Alternative Method: Method B
+Keep `backend/public/.htaccess` unchanged. Laravel needs it for clean API routes and front controller routing.
 
-Move only the contents of `backend/public` into `htdocs`, keep the rest of Laravel outside `htdocs`, and edit `index.php` paths to point to the backend folder.
-
-This can be cleaner when the host lets you place private Laravel files outside the web root, but it is more fragile on InfinityFree and easier to misconfigure. It is not the recommended method for this project unless you are sure your hosting account supports that structure.
-
-## 5. Prepare Laravel Locally
+## 4. Prepare Backend Locally
 
 Run these commands on your computer, not on InfinityFree:
 
@@ -119,37 +103,31 @@ php artisan route:clear
 php artisan view:clear
 ```
 
-Copy the generated `APP_KEY` value and keep it for the hosting `.env` file.
+Copy the generated `APP_KEY` value and paste it into the production `.env` file.
 
-If InfinityFree reports missing classes after upload, regenerate the autoloader locally without optimization and upload `vendor` again:
+Do not commit `vendor` to Git. Include `vendor` only in the manual ZIP/FTP upload because InfinityFree cannot run Composer on the server.
 
-```bash
-composer dump-autoload --no-dev --optimize=false
-```
+## 5. Create The Production `.env`
 
-Do not commit `vendor` to Git. It is included only in the manual ZIP/FTP upload.
+Use `backend/.env.infinityfree.example` or `deploy/infinityfree/env.example` as your template.
 
-## 6. Configure InfinityFree `.env`
-
-Use `backend/.env.infinityfree.example` or `deploy/infinityfree/env.example` as the template. Create a real `.env` locally for the ZIP upload or directly in File Manager. Do not commit it.
-
-Required values:
+Create the real `.env` manually for the hosting upload. Do not commit it.
 
 ```env
 APP_NAME="MAGHRIB OUD"
 APP_ENV=production
-APP_KEY=
+APP_KEY=base64:YOUR_GENERATED_APP_KEY
 APP_DEBUG=false
-APP_URL=https://YOUR_INFINITYFREE_DOMAIN
+APP_URL=https://maghrib-oud.infinityfree.me
 
-FRONTEND_URL=https://YOUR_VERCEL_DOMAIN
-CORS_ALLOWED_ORIGINS=https://YOUR_VERCEL_DOMAIN
+FRONTEND_URL=https://maghrib-oud.vercel.app
+CORS_ALLOWED_ORIGINS=https://maghrib-oud.vercel.app,https://maghrib-oud.infinityfree.me
 
 DB_CONNECTION=mysql
-DB_HOST=YOUR_INFINITYFREE_DB_HOST
+DB_HOST=sql311.infinityfree.com
 DB_PORT=3306
-DB_DATABASE=YOUR_INFINITYFREE_DB_NAME
-DB_USERNAME=YOUR_INFINITYFREE_DB_USERNAME
+DB_DATABASE=if0_42434243_maghrib_oud
+DB_USERNAME=if0_42434243
 DB_PASSWORD=YOUR_INFINITYFREE_DB_PASSWORD
 
 FILESYSTEM_DISK=public
@@ -159,79 +137,18 @@ CACHE_STORE=file
 QUEUE_CONNECTION=sync
 ```
 
-Important production settings:
+Important:
 
-- `APP_DEBUG=false`
-- `SESSION_DRIVER=file`
-- `CACHE_STORE=file`
-- `QUEUE_CONNECTION=sync`
-- `UPLOADS_DISK=infinityfree_public`
+- Keep `APP_DEBUG=false` online.
+- Replace `APP_KEY` with the generated key.
+- Replace `DB_PASSWORD` manually with the real InfinityFree database password.
+- The Vercel frontend URL is already configured. Keep both origins in `CORS_ALLOWED_ORIGINS` so browser API requests and direct backend checks work.
 
-## 7. Image Upload Handling
+## 6. Upload Backend Package To `htdocs`
 
-InfinityFree cannot run `php artisan storage:link` on the server. This project includes a shared-hosting upload disk named:
+Prepare a ZIP or FTP upload from the backend folder.
 
-```env
-UPLOADS_DISK=infinityfree_public
-```
-
-With that setting, product and category images uploaded from the admin dashboard are stored in:
-
-```text
-htdocs/public/uploads
-```
-
-They are served publicly from:
-
-```text
-https://YOUR_INFINITYFREE_DOMAIN/uploads/...
-```
-
-This avoids symlinks and keeps local development unchanged. Local and Railway deployments can continue using:
-
-```env
-UPLOADS_DISK=public
-```
-
-## 8. Prepare The Database Locally
-
-InfinityFree cannot run migrations or seeders on the server. Prepare the database locally first.
-
-Recommended local flow:
-
-```bash
-cd backend
-php artisan migrate --force
-```
-
-If you need demo catalog data locally, run the seeders locally only when you intentionally want demo data in the export.
-
-Do not run `migrate:fresh` on production data.
-
-## 9. Export Database SQL
-
-Use your local phpMyAdmin, MySQL Workbench, or another MySQL tool:
-
-1. Select the local MAGHRIB OUD database.
-2. Export it as SQL.
-3. Do not include unrelated databases.
-4. Review the SQL file before uploading if it contains customer test data.
-
-Do not commit SQL dumps to Git.
-
-## 10. Import SQL Into InfinityFree
-
-1. Open InfinityFree control panel.
-2. Open phpMyAdmin for the created database.
-3. Select the InfinityFree database.
-4. Import the SQL file exported locally.
-5. If import fails because of MySQL engine or foreign key limitations, use Railway/MySQL hosting instead or adjust manually with care. Do not change migrations blindly on production.
-
-## 11. Upload Files To `htdocs`
-
-Upload the prepared backend contents to `htdocs` using File Manager or FTP.
-
-Include in the manual upload:
+Include:
 
 - `app/`
 - `bootstrap/`
@@ -248,79 +165,89 @@ Include in the manual upload:
 - `composer.json`
 - `composer.lock`
 
-Do not upload:
+Do not include:
 
+- `.git/`
+- real local `.env` files not intended for production
 - `node_modules/`
 - frontend `dist/`
-- development screenshots or logs
-- `.git/`
-- unused local database dumps
+- local logs
+- database dumps in the web root
 
-## 12. Test Backend Online
+## 7. Import Database SQL Through phpMyAdmin
 
-Open these endpoints after upload:
+InfinityFree cannot run `php artisan migrate` on the server.
+
+Use this flow:
+
+1. Run migrations locally against your local MySQL database.
+2. Add the admin account, settings, categories, products, and content you want online.
+3. Export the local database as SQL using phpMyAdmin or another MySQL tool.
+4. Open InfinityFree phpMyAdmin.
+5. Select database `if0_42434243_maghrib_oud`.
+6. Import the SQL file.
+
+Do not run `migrate:fresh` on production data.
+
+Do not commit SQL dumps to Git.
+
+## 8. Image Uploads On InfinityFree
+
+This project supports a shared-hosting upload disk:
+
+```env
+UPLOADS_DISK=infinityfree_public
+```
+
+With this setting, dashboard product/category images are stored in:
 
 ```text
-https://YOUR_INFINITYFREE_DOMAIN/api/health
-https://YOUR_INFINITYFREE_DOMAIN/api/categories
-https://YOUR_INFINITYFREE_DOMAIN/api/products
-https://YOUR_INFINITYFREE_DOMAIN/api/settings
-https://YOUR_INFINITYFREE_DOMAIN/api/social-links
+htdocs/public/uploads
 ```
 
-Expected result: JSON responses without 500 errors.
+They are served from:
 
-If you see a 500 error, temporarily check hosting error logs and verify:
+```text
+https://maghrib-oud.infinityfree.me/uploads/...
+```
 
-- `.env` exists.
+This avoids needing `php artisan storage:link` on InfinityFree.
+
+## 9. Test Backend After Upload
+
+Open these URLs after the upload and database import:
+
+```text
+https://maghrib-oud.infinityfree.me/api/categories
+https://maghrib-oud.infinityfree.me/api/products
+https://maghrib-oud.infinityfree.me/api/settings
+```
+
+Expected result: JSON responses.
+
+If `/api/categories` returns 500, check:
+
+- `.env` exists in `htdocs`.
 - `APP_KEY` is set.
-- Database credentials are correct.
+- `APP_DEBUG=false`.
+- DB host/name/user/password are correct.
 - `vendor/` was uploaded.
 - `storage/` and `bootstrap/cache/` are writable.
+- `htdocs/.htaccess` exists and points to `public/`.
 
-Do not enable debug publicly for long periods.
+## 10. Connect Vercel Frontend Later
 
-## 13. Connect Vercel Frontend
-
-In Vercel, set the frontend environment variable:
-
-```env
-VITE_API_URL=https://YOUR_INFINITYFREE_DOMAIN/api
-```
-
-Redeploy the Vercel frontend after changing it.
-
-Then update backend `.env` on InfinityFree:
+In Vercel, set:
 
 ```env
-FRONTEND_URL=https://YOUR_VERCEL_DOMAIN
-CORS_ALLOWED_ORIGINS=https://YOUR_VERCEL_DOMAIN
+VITE_API_URL=https://maghrib-oud.infinityfree.me/api
 ```
 
-This project reads CORS origins from `FRONTEND_URL` and `CORS_ALLOWED_ORIGINS`.
+After Vercel deployment, update backend `.env`:
 
-## 14. Final Live Tests
+```env
+FRONTEND_URL=https://maghrib-oud.vercel.app
+CORS_ALLOWED_ORIGINS=https://maghrib-oud.vercel.app,https://maghrib-oud.infinityfree.me
+```
 
-After backend and frontend are both live:
-
-- Public products load.
-- Product details page works.
-- Cart works.
-- Checkout creates an order.
-- WhatsApp opens with the order message.
-- Admin login works.
-- Admin product/category CRUD works.
-- Image upload stores files under `public/uploads`.
-- Settings WhatsApp number updates the public site.
-- Orders appear in the admin dashboard.
-- Mobile layout works from a phone.
-
-## 15. Production Safety
-
-- Keep `.env` out of Git.
-- Keep `vendor` out of Git.
-- Keep SQL dumps out of Git.
-- Keep `APP_DEBUG=false`.
-- Change the admin password after deployment.
-- Never run `migrate:fresh` against production data.
-- Keep real database credentials only inside InfinityFree control panel or `.env` on hosting.
+Then test checkout, admin login, products, and image loading from the Vercel frontend.

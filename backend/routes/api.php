@@ -16,6 +16,8 @@ use App\Http\Controllers\Api\Public\SettingController as PublicSettingController
 use App\Http\Controllers\Api\Public\SocialLinkController as PublicSocialLinkController;
 use Illuminate\Support\Facades\Route;
 
+Route::options('{any}', fn () => response()->noContent())->where('any', '.*');
+
 Route::get('health', HealthController::class);
 
 Route::middleware('throttle:120,1')->group(function (): void {
