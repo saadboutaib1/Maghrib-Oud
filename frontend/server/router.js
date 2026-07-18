@@ -280,21 +280,38 @@ function buildOrderMessage({ orderNumber, body, items, subtotal, deliveryFee, di
   });
 
   return [
-    `Ø·Ù„Ø¨ Ø¬Ø¯ÙŠØ¯ ${orderNumber}`,
-    `Ø§Ù„Ø§Ø³Ù…: ${body.customer_name}`,
-    `Ø§Ù„Ù‡Ø§ØªÙ: ${body.customer_phone}`,
-    `Ø§Ù„Ù…Ø¯ÙŠÙ†Ø©: ${body.city}`,
-    `Ø§Ù„Ø¹Ù†ÙˆØ§Ù†: ${body.address}`,
-    body.notes ? `Ù…Ù„Ø§Ø­Ø¸Ø§Øª: ${body.notes}` : '',
+    `طلب جديد ${orderNumber}`,
+    `الاسم: ${body.customer_name}`,
+    `الهاتف: ${body.customer_phone}`,
+    `المدينة: ${body.city}`,
+    `العنوان: ${body.address}`,
+    body.notes ? `ملاحظات: ${body.notes}` : '',
     '',
-    'Ø§Ù„Ù…Ù†ØªØ¬Ø§Øª:',
+    'المنتجات:',
     ...lines,
     '',
-    `Ø§Ù„Ù…Ø¬Ù…ÙˆØ¹ Ø§Ù„ÙØ±Ø¹ÙŠ: ${subtotal} MAD`,
-    discountTotal > 0 ? `Ø§Ù„Ø®ØµÙ…: -${discountTotal} MAD` : '',
-    `Ø±Ø³ÙˆÙ… Ø§Ù„ØªÙˆØµÙŠÙ„: ${deliveryFee} MAD`,
-    `Ø§Ù„Ù…Ø¬Ù…ÙˆØ¹: ${total} MAD`,
+    `المجموع الفرعي: ${subtotal} MAD`,
+    discountTotal > 0 ? `الخصم: -${discountTotal} MAD` : '',
+    `رسوم التوصيل: ${deliveryFee} MAD`,
+    `المجموع: ${total} MAD`,
   ].filter(Boolean).join('\n');
+}
+
+function repairMojibakeText(value) {
+  if (typeof value !== 'string' || !/[ØÙÃ]/.test(value)) return value;
+
+  try {
+    return Buffer.from(value, 'latin1').toString('utf8');
+  } catch {
+    return value;
+  }
+}
+
+function formatOrder(order = {}) {
+  return {
+    ...order,
+    whatsapp_message: repairMojibakeText(order.whatsapp_message),
+  };
 }
 
 async function createOrder(body = {}) {
@@ -407,7 +424,7 @@ async function createOrder(body = {}) {
   }
 
   return {
-    ...order,
+    ...formatOrder(order),
     items: insertedItems || [],
   };
 }
@@ -417,7 +434,7 @@ async function listOrders() {
   const { data, error } = await supabase.from('orders').select('*').order('created_at', { ascending: false });
 
   if (error) throw new ApiRouteError('Could not load orders.', 500);
-  return data || [];
+  return (data || []).map(formatOrder);
 }
 
 async function getOrder(id) {
@@ -434,7 +451,7 @@ async function getOrder(id) {
 
   if (itemsError) throw new ApiRouteError('Could not load order items.', 500);
 
-  return { ...order, items: items || [] };
+  return { ...formatOrder(order), items: items || [] };
 }
 
 async function awardLoyaltyPoints(order) {
