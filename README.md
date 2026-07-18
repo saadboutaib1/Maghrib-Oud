@@ -9,7 +9,7 @@ The public store keeps the same customer flow: browse products, add items to the
 - Frontend: Vercel, root directory `frontend`
 - API backend: Vercel Serverless Functions in `frontend/api`
 - Database: Supabase Postgres
-- Storage: current seed images use public frontend assets; Supabase Storage can be added later for persistent uploaded media
+- Storage: seed images use public frontend assets; admin uploads can use a public Supabase Storage bucket via `SUPABASE_STORAGE_BUCKET`, with a data URL fallback for local/dev use
 - Legacy reference: `backend/` keeps the previous Laravel API code for reference only and is not used for production hosting
 
 ## Key Features
@@ -37,14 +37,14 @@ The public store keeps the same customer flow: browse products, add items to the
 
 ### Admin Dashboard
 
-- Admin login through the Vercel API.
+- Admin login through the Vercel API with bcrypt-hashed Supabase admin accounts.
 - Signed admin token stored by the existing dashboard session flow.
 - Dashboard overview for products, categories, orders, and delivered revenue.
 - Product and category CRUD with Arabic, French, and English fields.
 - Product status, stock, old price, featured products, and image management.
 - Order management with status updates and saved WhatsApp message preview.
 - Store settings for WhatsApp number, delivery fee, default language, promotions, loyalty rules, and social links.
-- Admin profile page with password update.
+- Admin profile page with Supabase-backed password updates; the old password stops working and existing admin sessions are invalidated after a successful change.
 
 ## Tech Stack
 
@@ -97,8 +97,9 @@ VITE_API_URL=/api
 SUPABASE_URL=your_supabase_project_url
 SUPABASE_ANON_KEY=your_supabase_anon_key
 SUPABASE_SERVICE_ROLE_KEY=server_only_do_not_expose
+SUPABASE_STORAGE_BUCKET=maghrib-oud-images
 ADMIN_EMAIL=your_admin_email
-ADMIN_PASSWORD=your_admin_password
+ADMIN_PASSWORD=your_initial_admin_password
 ADMIN_TOKEN_SECRET=your_admin_token_secret
 ```
 

@@ -21,7 +21,7 @@ Do not add one file per endpoint unless the deployable function count remains un
 | `frontend/api/admin/[resource].js` | Admin one-segment routes such as products, categories, orders, settings, social links, logout, and change password | Implemented |
 | `frontend/api/admin/[resource]/[id].js` | Admin item routes for products, categories, and orders | Implemented |
 | `frontend/api/admin/[resource]/[id]/[action].js` | Admin item action routes such as order status updates | Implemented |
-| `frontend/api/admin/login.js` | Environment-based admin login | Implemented |
+| `frontend/api/admin/login.js` | Supabase-backed admin login with first-admin env bootstrap | Implemented |
 | `frontend/api/admin/profile.js` | Admin profile read/update | Implemented |
 | `frontend/api/admin/dashboard.js` | Admin dashboard metrics | Implemented |
 

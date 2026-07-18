@@ -1,4 +1,4 @@
-import { Save, ShieldCheck, UserRound } from 'lucide-react';
+import { Eye, EyeOff, LockKeyhole, Save, ShieldCheck, UserRound } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AdminCard from '../../components/admin/AdminCard.jsx';
@@ -16,6 +16,11 @@ export default function AdminProfile() {
     current_password: '',
     password: '',
     password_confirmation: '',
+  });
+  const [visiblePasswords, setVisiblePasswords] = useState({
+    current_password: false,
+    password: false,
+    password_confirmation: false,
   });
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState('');
@@ -43,6 +48,14 @@ export default function AdminProfile() {
     setPasswordForm((current) => ({ ...current, [name]: value }));
   }
 
+  function togglePasswordVisibility(field) {
+    setVisiblePasswords((current) => ({ ...current, [field]: !current[field] }));
+  }
+
+  function getPasswordToggleLabel(field) {
+    return ta(visiblePasswords[field] ? 'login.hidePassword' : 'login.showPassword');
+  }
+
   function hasPasswordChanges() {
     return Boolean(passwordForm.current_password || passwordForm.password || passwordForm.password_confirmation);
   }
@@ -52,6 +65,11 @@ export default function AdminProfile() {
       current_password: '',
       password: '',
       password_confirmation: '',
+    });
+    setVisiblePasswords({
+      current_password: false,
+      password: false,
+      password_confirmation: false,
     });
   }
 
@@ -163,37 +181,76 @@ export default function AdminProfile() {
 
           <label>
             <span>{ta('profile.currentPassword')}</span>
-            <input
-              type="password"
-              name="current_password"
-              value={passwordForm.current_password}
-              onChange={updatePasswordField}
-              autoComplete="current-password"
-            />
+            <div className="admin-input-shell">
+              <LockKeyhole className="admin-input-icon" size={18} aria-hidden="true" />
+              <input
+                type={visiblePasswords.current_password ? 'text' : 'password'}
+                name="current_password"
+                value={passwordForm.current_password}
+                onChange={updatePasswordField}
+                autoComplete="current-password"
+                dir="ltr"
+              />
+              <button
+                className="admin-password-toggle"
+                type="button"
+                onClick={() => togglePasswordVisibility('current_password')}
+                aria-label={getPasswordToggleLabel('current_password')}
+                title={getPasswordToggleLabel('current_password')}
+              >
+                {visiblePasswords.current_password ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
           </label>
 
           <label>
             <span>{ta('profile.newPassword')}</span>
-            <input
-              type="password"
-              name="password"
-              value={passwordForm.password}
-              onChange={updatePasswordField}
-              minLength="8"
-              autoComplete="new-password"
-            />
+            <div className="admin-input-shell">
+              <LockKeyhole className="admin-input-icon" size={18} aria-hidden="true" />
+              <input
+                type={visiblePasswords.password ? 'text' : 'password'}
+                name="password"
+                value={passwordForm.password}
+                onChange={updatePasswordField}
+                minLength="8"
+                autoComplete="new-password"
+                dir="ltr"
+              />
+              <button
+                className="admin-password-toggle"
+                type="button"
+                onClick={() => togglePasswordVisibility('password')}
+                aria-label={getPasswordToggleLabel('password')}
+                title={getPasswordToggleLabel('password')}
+              >
+                {visiblePasswords.password ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
           </label>
 
           <label className="admin-form__wide">
             <span>{ta('profile.confirmPassword')}</span>
-            <input
-              type="password"
-              name="password_confirmation"
-              value={passwordForm.password_confirmation}
-              onChange={updatePasswordField}
-              minLength="8"
-              autoComplete="new-password"
-            />
+            <div className="admin-input-shell">
+              <LockKeyhole className="admin-input-icon" size={18} aria-hidden="true" />
+              <input
+                type={visiblePasswords.password_confirmation ? 'text' : 'password'}
+                name="password_confirmation"
+                value={passwordForm.password_confirmation}
+                onChange={updatePasswordField}
+                minLength="8"
+                autoComplete="new-password"
+                dir="ltr"
+              />
+              <button
+                className="admin-password-toggle"
+                type="button"
+                onClick={() => togglePasswordVisibility('password_confirmation')}
+                aria-label={getPasswordToggleLabel('password_confirmation')}
+                title={getPasswordToggleLabel('password_confirmation')}
+              >
+                {visiblePasswords.password_confirmation ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
           </label>
 
           <div className="admin-form-actions admin-form__wide admin-profile-actions">

@@ -8,7 +8,7 @@ MAGHRIB OUD production now uses Vercel + Vercel Serverless API Functions + Supab
 - API: Vercel Serverless Functions in `frontend/api`
 - Database: Supabase Postgres
 - Browser API base: `/api`
-- Storage: public frontend image assets for seed data; Supabase Storage can be added later for persistent uploaded media
+- Storage: public frontend image assets for seed data; optional public Supabase Storage bucket for admin uploads using `SUPABASE_STORAGE_BUCKET`
 
 ## 2. Required Vercel Environment Variables
 
@@ -19,14 +19,15 @@ VITE_API_URL=/api
 SUPABASE_URL=your_supabase_project_url
 SUPABASE_ANON_KEY=your_supabase_anon_key
 SUPABASE_SERVICE_ROLE_KEY=server_only_do_not_expose
+SUPABASE_STORAGE_BUCKET=maghrib-oud-images
 ADMIN_EMAIL=your_admin_email
-ADMIN_PASSWORD=your_admin_password
+ADMIN_PASSWORD=your_initial_admin_password
 ADMIN_TOKEN_SECRET=your_admin_token_secret
 ```
 
 Security notes:
 
-- `SUPABASE_SERVICE_ROLE_KEY` is server-only.
+- `SUPABASE_SERVICE_ROLE_KEY` and `ADMIN_TOKEN_SECRET` are server-only.
 - Do not prefix `SUPABASE_SERVICE_ROLE_KEY` with `VITE_`.
 - Do not commit real values to Git.
 - Only `VITE_API_URL=/api` is intended for browser code.
@@ -61,7 +62,7 @@ Recommended first admin flow:
 5. The API creates the first admin with a bcrypt hash.
 6. Change the password from the admin profile page.
 
-After the first admin exists, keep `ADMIN_PASSWORD` rotated or remove it from Vercel if you do not want bootstrap login available again. Bootstrap creation only runs when the `admins` table is empty.
+After the first admin exists, login uses the bcrypt hash stored in Supabase. `ADMIN_PASSWORD` is only a first-admin bootstrap value and no longer logs in once an active admin row exists. Password changes rotate the admin session version so older sessions are rejected.
 
 ## 5. Vercel Project Settings
 
@@ -139,6 +140,6 @@ Database rollback:
 
 ## 10. Known Limitations
 
-- Product/category image upload currently stores small uploaded images as data URLs through the serverless API. Use Supabase Storage later for larger production catalogs.
+- Product/category image upload accepts JPG, PNG, WebP, and GIF files up to 2 MB. When `SUPABASE_STORAGE_BUCKET` is configured, uploads are saved to that public Supabase Storage bucket; otherwise small images fall back to data URLs.
 - Orders use WhatsApp and cash on delivery; no online payment gateway is configured.
 - The legacy Laravel backend is not part of production deployment.

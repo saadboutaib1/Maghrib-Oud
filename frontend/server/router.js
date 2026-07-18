@@ -1,4 +1,4 @@
-﻿import crypto from 'node:crypto';
+import crypto from 'node:crypto';
 import {
   ApiRouteError,
   DEFAULT_SETTINGS,
@@ -54,7 +54,13 @@ function normalizeString(value = '') {
   return String(value || '').trim();
 }
 
-function getLocalizedProductName(product) {
+function normalizeMessageLanguage(value) {
+  return ['ar', 'fr', 'en'].includes(value) ? value : 'ar';
+}
+
+function getLocalizedProductName(product, language = 'ar') {
+  if (language === 'fr') return product.name_fr || product.name_en || product.name_ar || product.slug || `Product ${product.id}`;
+  if (language === 'en') return product.name_en || product.name_fr || product.name_ar || product.slug || `Product ${product.id}`;
   return product.name_ar || product.name_fr || product.name_en || product.slug || `Product ${product.id}`;
 }
 
@@ -273,27 +279,104 @@ async function generateOrderNumber() {
   return `MO-${year}-${String((count || 0) + 1).padStart(4, '0')}`;
 }
 
-function buildOrderMessage({ orderNumber, body, items, subtotal, deliveryFee, discountTotal, total }) {
-  const lines = items.map((item, index) => {
-    const name = getLocalizedProductName(item.product);
-    return `${index + 1}. ${name} x ${item.quantity} = ${item.total_price} MAD`;
-  });
+function getMessageCurrencyLabel(language, currency = 'MAD') {
+  const value = String(currency || 'MAD').trim();
+  const isMoroccanDirham = ['MAD', 'mad', 'د.م.', 'د.م', 'درهم'].includes(value) || /د\.?م/.test(value);
+
+  if (isMoroccanDirham) {
+    return language === 'ar' ? 'د.م.' : 'MAD';
+  }
+
+  return value || 'MAD';
+}
+
+function formatMessageAmount(value, language, currency) {
+  const amount = Number(value || 0);
+  const locale = language === 'ar' ? 'ar-MA' : language === 'fr' ? 'fr-MA' : 'en-MA';
+
+  try {
+    return `${new Intl.NumberFormat(locale, { maximumFractionDigits: 0 }).format(amount)} ${getMessageCurrencyLabel(language, currency)}`;
+  } catch {
+    return `${amount} ${getMessageCurrencyLabel(language, currency)}`;
+  }
+}
+
+function buildOrderMessage({ orderNumber, body, items, subtotal, deliveryFee, discountTotal, total, language = 'ar', currency = 'MAD' }) {
+  const currentLanguage = normalizeMessageLanguage(language);
+  const notes = normalizeString(body.notes);
+  const productLines = items.map((item, index) => {
+    const name = getLocalizedProductName(item.product, currentLanguage);
+    return `${index + 1}. ${name} × ${item.quantity} = ${formatMessageAmount(item.total_price, currentLanguage, currency)}`;
+  }).join('\n');
+
+  if (currentLanguage === 'fr') {
+    return [
+      'Nouvelle commande MAGHRIB OUD',
+      `Numéro de commande : ${orderNumber || 'N/A'}`,
+      '',
+      'Informations client :',
+      `Nom : ${body.customer_name}`,
+      `Téléphone : ${body.customer_phone}`,
+      `Ville : ${body.city}`,
+      `Adresse : ${body.address}`,
+      `Notes : ${notes || 'Aucune'}`,
+      '',
+      'Produits :',
+      productLines,
+      '',
+      `Sous-total : ${formatMessageAmount(subtotal, currentLanguage, currency)}`,
+      discountTotal > 0 ? `Remise offre « Achetez-en 2 » : -${formatMessageAmount(discountTotal, currentLanguage, currency)}` : '',
+      `Frais de livraison : ${formatMessageAmount(deliveryFee, currentLanguage, currency)}`,
+      `Total : ${formatMessageAmount(total, currentLanguage, currency)}`,
+      '',
+      'Mode de paiement : Paiement à la livraison',
+    ].filter(Boolean).join('\n');
+  }
+
+  if (currentLanguage === 'en') {
+    return [
+      'New order from MAGHRIB OUD',
+      `Order number: ${orderNumber || 'N/A'}`,
+      '',
+      'Customer information:',
+      `Name: ${body.customer_name}`,
+      `Phone: ${body.customer_phone}`,
+      `City: ${body.city}`,
+      `Address: ${body.address}`,
+      `Notes: ${notes || 'None'}`,
+      '',
+      'Products:',
+      productLines,
+      '',
+      `Subtotal: ${formatMessageAmount(subtotal, currentLanguage, currency)}`,
+      discountTotal > 0 ? `Buy 2 offer discount: -${formatMessageAmount(discountTotal, currentLanguage, currency)}` : '',
+      `Delivery fee: ${formatMessageAmount(deliveryFee, currentLanguage, currency)}`,
+      `Total: ${formatMessageAmount(total, currentLanguage, currency)}`,
+      '',
+      'Payment method: Cash on delivery',
+    ].filter(Boolean).join('\n');
+  }
 
   return [
-    `طلب جديد ${orderNumber}`,
+    'طلب جديد من MAGHRIB OUD',
+    `رقم الطلب: ${orderNumber || 'غير متوفر'}`,
+    '',
+    'معلومات العميل:',
     `الاسم: ${body.customer_name}`,
     `الهاتف: ${body.customer_phone}`,
     `المدينة: ${body.city}`,
     `العنوان: ${body.address}`,
-    body.notes ? `ملاحظات: ${body.notes}` : '',
+    `ملاحظات: ${notes || 'لا توجد ملاحظات'}`,
     '',
     'المنتجات:',
-    ...lines,
+    productLines,
     '',
-    `المجموع الفرعي: ${subtotal} MAD`,
-    discountTotal > 0 ? `الخصم: -${discountTotal} MAD` : '',
-    `رسوم التوصيل: ${deliveryFee} MAD`,
-    `المجموع: ${total} MAD`,
+    `المجموع الفرعي: ${formatMessageAmount(subtotal, currentLanguage, currency)}`,
+    discountTotal > 0 ? `خصم عرض اشتر قطعتين: -${formatMessageAmount(discountTotal, currentLanguage, currency)}` : '',
+    `رسوم التوصيل: ${formatMessageAmount(deliveryFee, currentLanguage, currency)}`,
+    `المجموع الكلي: ${formatMessageAmount(total, currentLanguage, currency)}`,
+    '',
+    'طريقة الدفع: الدفع عند الاستلام',
   ].filter(Boolean).join('\n');
 }
 
@@ -377,7 +460,18 @@ async function createOrder(body = {}) {
   const total = Math.round((discountedSubtotal + deliveryFee) * 100) / 100;
   const loyaltyPointsEarned = calculateLoyaltyPoints(discountedSubtotal, loyalty);
   const orderNumber = await generateOrderNumber();
-  const whatsappMessage = buildOrderMessage({ orderNumber, body, items: pricedItems, subtotal, deliveryFee, discountTotal, total });
+  const orderLanguage = normalizeMessageLanguage(body.language || settings.default_language || DEFAULT_SETTINGS.default_language);
+  const whatsappMessage = buildOrderMessage({
+    orderNumber,
+    body,
+    items: pricedItems,
+    subtotal,
+    deliveryFee,
+    discountTotal,
+    total,
+    language: orderLanguage,
+    currency: settings.currency || DEFAULT_SETTINGS.currency,
+  });
 
   const { data: order, error: orderError } = await supabase
     .from('orders')
@@ -543,16 +637,24 @@ async function getLoyaltyPoints(phone) {
 }
 
 async function ensureBootstrapAdmin(email, password) {
-  const adminEmail = process.env.ADMIN_EMAIL;
-  const adminPassword = process.env.ADMIN_PASSWORD;
+  const adminEmail = normalizeEmail(process.env.ADMIN_EMAIL);
+  const adminPassword = String(process.env.ADMIN_PASSWORD || '');
 
   if (!adminEmail || !adminPassword || email !== adminEmail || password !== adminPassword) {
     return null;
   }
 
   const supabase = getSupabaseAdmin();
-  const { count, error: countError } = await supabase.from('admins').select('id', { count: 'exact', head: true });
-  if (countError || count !== 0) return null;
+  const { count, error: countError } = await supabase
+    .from('admins')
+    .select('id', { count: 'exact', head: true })
+    .eq('status', 'active');
+
+  if (countError) {
+    throw new ApiRouteError('Could not verify admin setup.', 500);
+  }
+
+  if ((count || 0) !== 0) return null;
 
   const { data, error } = await supabase
     .from('admins')
@@ -560,6 +662,7 @@ async function ensureBootstrapAdmin(email, password) {
       name: 'MAGHRIB OUD Admin',
       email: adminEmail,
       password_hash: await hashPassword(adminPassword),
+      remember_token: crypto.randomBytes(24).toString('hex'),
       role: 'admin',
       status: 'active',
     })
@@ -574,28 +677,6 @@ function normalizeEmail(value) {
   return normalizeString(value).toLowerCase();
 }
 
-function safeEqual(left, right) {
-  const leftBuffer = Buffer.from(String(left || ''));
-  const rightBuffer = Buffer.from(String(right || ''));
-
-  if (leftBuffer.length !== rightBuffer.length) {
-    return false;
-  }
-
-  return crypto.timingSafeEqual(leftBuffer, rightBuffer);
-}
-
-function getConfiguredAdminCredentials() {
-  const email = normalizeEmail(process.env.ADMIN_EMAIL);
-  const password = String(process.env.ADMIN_PASSWORD || '');
-  const tokenSecret = String(process.env.ADMIN_TOKEN_SECRET || '');
-
-  if (!email || !password || !tokenSecret) {
-    return null;
-  }
-
-  return { email, password };
-}
 
 async function loginAdmin(body = {}) {
   const email = normalizeEmail(body.email);
@@ -603,28 +684,6 @@ async function loginAdmin(body = {}) {
 
   if (!email || !password) {
     throw new ApiRouteError('Email and password are required.', 422);
-  }
-
-  const configuredAdmin = getConfiguredAdminCredentials();
-
-  if (configuredAdmin && safeEqual(email, configuredAdmin.email) && safeEqual(password, configuredAdmin.password)) {
-    const admin = {
-      id: 'env-admin',
-      name: 'MAGHRIB OUD Admin',
-      email: configuredAdmin.email,
-      role: 'admin',
-      status: 'active',
-      source: 'env',
-    };
-
-    return {
-      token: createAdminToken(admin),
-      admin: {
-        name: admin.name,
-        email: admin.email,
-        role: admin.role,
-      },
-    };
   }
 
   const supabase = getSupabaseAdmin();
@@ -687,7 +746,11 @@ async function changePassword(admin, body = {}) {
 
   const { error } = await supabase
     .from('admins')
-    .update({ password_hash: await hashPassword(password), updated_at: new Date().toISOString() })
+    .update({
+      password_hash: await hashPassword(password),
+      remember_token: crypto.randomBytes(24).toString('hex'),
+      updated_at: new Date().toISOString(),
+    })
     .eq('id', admin.id);
 
   if (error) throw new ApiRouteError('Could not change password.', 500);

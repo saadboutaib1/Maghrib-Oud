@@ -1,4 +1,4 @@
-import { MessageCircle, ShieldCheck } from 'lucide-react';
+﻿import { MessageCircle, ShieldCheck } from 'lucide-react';
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import BackButton from '../components/common/BackButton.jsx';
@@ -114,6 +114,7 @@ export default function Checkout() {
         city: form.city.trim(),
         address: form.address.trim(),
         notes: form.notes.trim(),
+        language,
         items: checkoutItems.map((item) => ({
           product_id: getBackendProductId(item),
           quantity: item.quantity,

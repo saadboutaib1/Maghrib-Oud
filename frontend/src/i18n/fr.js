@@ -51,7 +51,7 @@ const fr = {
     buy2OfferBadge: 'Achetez-en 2',
   },
   home: {
-    eyebrow: 'Luxe oriental avec une touche moderne',
+    eyebrow: 'Luxe oriental à l’empreinte marocaine',
     title: 'MAGHRIB OUD',
     description:
       'MAGHRIB OUD est une boutique marocaine de produits orientaux haut de gamme. Choisissez vos articles et envoyez votre commande sur WhatsApp.',

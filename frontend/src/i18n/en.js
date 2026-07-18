@@ -51,7 +51,7 @@ const en = {
     buy2OfferBadge: 'Buy 2 offer',
   },
   home: {
-    eyebrow: 'Oriental luxury with a modern touch',
+    eyebrow: 'Oriental luxury with a Moroccan signature',
     title: 'MAGHRIB OUD',
     description:
       'MAGHRIB OUD is a Moroccan store for premium oriental products. Choose your items and send your order through WhatsApp.',

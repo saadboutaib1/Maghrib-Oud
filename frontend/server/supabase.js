@@ -280,10 +280,56 @@ function readRequestText(req) {
   });
 }
 
+const ALLOWED_IMAGE_MIME_TYPES = new Map([
+  ['image/jpeg', 'jpg'],
+  ['image/png', 'png'],
+  ['image/webp', 'webp'],
+  ['image/gif', 'gif'],
+]);
+
+function getUploadExtension(file, mimeType) {
+  const extensionFromName = String(file.originalFilename || '')
+    .toLowerCase()
+    .match(/\.(jpe?g|png|webp|gif)$/)?.[1]
+    ?.replace('jpeg', 'jpg');
+
+  return extensionFromName || ALLOWED_IMAGE_MIME_TYPES.get(mimeType) || 'jpg';
+}
+
+async function storeUploadedImage(file, mimeType) {
+  const buffer = await readFile(file.filepath);
+  const bucket = String(process.env.SUPABASE_STORAGE_BUCKET || '').trim();
+
+  if (!bucket) {
+    return `data:${mimeType};base64,${buffer.toString('base64')}`;
+  }
+
+  const extension = getUploadExtension(file, mimeType);
+  const today = new Date().toISOString().slice(0, 10);
+  const storagePath = `uploads/${today}/${crypto.randomUUID()}.${extension}`;
+  const supabase = getSupabaseAdmin();
+  const { error } = await supabase.storage.from(bucket).upload(storagePath, buffer, {
+    contentType: mimeType,
+    upsert: false,
+  });
+
+  if (error) {
+    throw new ApiRouteError('Could not upload image.', 500);
+  }
+
+  const { data } = supabase.storage.from(bucket).getPublicUrl(storagePath);
+  if (!data?.publicUrl) {
+    throw new ApiRouteError('Could not create image URL.', 500);
+  }
+
+  return data.publicUrl;
+}
+
 async function parseMultipartBody(req) {
   const form = formidable({
     allowEmptyFiles: false,
     maxFileSize: 2 * 1024 * 1024,
+    maxTotalFileSize: 2 * 1024 * 1024,
     multiples: false,
   });
 
@@ -298,12 +344,12 @@ async function parseMultipartBody(req) {
     const file = Array.isArray(value) ? value[0] : value;
     if (!file || !file.size) continue;
 
-    if (!String(file.mimetype || '').startsWith('image/')) {
-      throw new ApiRouteError('Only image uploads are allowed.', 422, { field: key });
+    const mimeType = String(file.mimetype || '').toLowerCase();
+    if (!ALLOWED_IMAGE_MIME_TYPES.has(mimeType)) {
+      throw new ApiRouteError('Only JPG, PNG, WebP, or GIF image uploads are allowed.', 422, { field: key });
     }
 
-    const buffer = await readFile(file.filepath);
-    body[key] = `data:${file.mimetype};base64,${buffer.toString('base64')}`;
+    body[key] = await storeUploadedImage(file, mimeType);
     body[`${key}_filename`] = file.originalFilename || file.newFilename || 'image';
   }
 
@@ -311,7 +357,7 @@ async function parseMultipartBody(req) {
 }
 
 function getTokenSecret() {
-  const secret = process.env.ADMIN_TOKEN_SECRET || process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const secret = process.env.ADMIN_TOKEN_SECRET;
 
   if (!secret) {
     throw new ApiRouteError('Admin token secret is not configured.', 500);
@@ -333,6 +379,7 @@ export function createAdminToken(admin = {}) {
       name: admin.name || 'MAGHRIB OUD Admin',
       role: admin.role || 'admin',
       source: admin.source || (String(subject) === 'env-admin' ? 'env' : 'supabase'),
+      session_version: admin.remember_token || '',
       exp: Math.floor(Date.now() / 1000) + 60 * 60 * 8,
     })
   ).toString('base64url');
@@ -378,8 +425,17 @@ export async function requireAdmin(req) {
   if (String(tokenData.sub) === 'env-admin') {
     const adminEmail = String(process.env.ADMIN_EMAIL || '').trim().toLowerCase();
     const tokenEmail = String(tokenData.email || '').trim().toLowerCase();
+    const supabase = getSupabaseAdmin();
+    const { count, error } = await supabase
+      .from('admins')
+      .select('id', { count: 'exact', head: true })
+      .eq('status', 'active');
 
-    if (!adminEmail || tokenEmail !== adminEmail || tokenData.role !== 'admin') {
+    if (error) {
+      throw new ApiRouteError('Could not verify admin account.', 500);
+    }
+
+    if ((count || 0) > 0 || !adminEmail || tokenEmail !== adminEmail || tokenData.role !== 'admin') {
       throw new ApiRouteError('Admin account is not authorized.', 401);
     }
 
@@ -395,13 +451,20 @@ export async function requireAdmin(req) {
   const supabase = getSupabaseAdmin();
   const { data: admin, error } = await supabase
     .from('admins')
-    .select('id,name,email,role,status,created_at,updated_at')
+    .select('id,name,email,role,status,remember_token,created_at,updated_at')
     .eq('id', tokenData.sub)
     .eq('status', 'active')
     .single();
 
   if (error || !admin) {
     throw new ApiRouteError('Admin account is not authorized.', 401);
+  }
+
+  const currentSessionVersion = admin.remember_token || '';
+  const tokenSessionVersion = tokenData.session_version || '';
+
+  if (currentSessionVersion && tokenSessionVersion !== currentSessionVersion) {
+    throw new ApiRouteError('Admin session expired.', 401);
   }
 
   return admin;

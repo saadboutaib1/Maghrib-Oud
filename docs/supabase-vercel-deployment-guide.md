@@ -7,7 +7,7 @@ This guide moves production away from the legacy Laravel backend. The Laravel ba
 - Frontend: Vercel, root directory `frontend`
 - API backend: Vercel Serverless Functions in `frontend/api`
 - Database: Supabase Postgres
-- Storage: existing public image paths for seed data; Supabase Storage can be added later for persistent uploaded media
+- Storage: existing public image paths for seed data; optional public Supabase Storage bucket for admin uploads
 - Browser API base: `/api` on the same Vercel domain
 
 ## 1. Create or Open Supabase Project
@@ -45,7 +45,7 @@ Recommended setup:
 3. Deploy Vercel.
 4. Log in once with those credentials.
 5. The serverless API will create the first admin with a bcrypt hash.
-6. After the first login works, change the password from the admin profile page.
+6. After the first login works, change the password from the admin profile page. The new password is stored as a bcrypt hash in Supabase, the initial Vercel password stops working, and older admin sessions are invalidated.
 
 Alternative setup:
 
@@ -63,6 +63,7 @@ VITE_API_URL=/api
 SUPABASE_URL=https://YOUR_SUPABASE_PROJECT.supabase.co
 SUPABASE_ANON_KEY=YOUR_SUPABASE_ANON_KEY
 SUPABASE_SERVICE_ROLE_KEY=YOUR_SUPABASE_SERVICE_ROLE_KEY
+SUPABASE_STORAGE_BUCKET=maghrib-oud-images
 ADMIN_EMAIL=YOUR_ADMIN_EMAIL
 ADMIN_PASSWORD=YOUR_INITIAL_ADMIN_PASSWORD
 ADMIN_TOKEN_SECRET=LONG_RANDOM_SERVER_SECRET
@@ -70,7 +71,7 @@ ADMIN_TOKEN_SECRET=LONG_RANDOM_SERVER_SECRET
 
 Important:
 
-- `SUPABASE_SERVICE_ROLE_KEY` is server-only.
+- `SUPABASE_SERVICE_ROLE_KEY` and `ADMIN_TOKEN_SECRET` are server-only.
 - Do not prefix `SUPABASE_SERVICE_ROLE_KEY` with `VITE_`.
 - Do not use `SUPABASE_SERVICE_ROLE_KEY` in frontend browser code.
 - `VITE_API_URL=/api` is the only browser-exposed API config.
@@ -156,9 +157,7 @@ Loyalty points are awarded when an admin changes an order status to `delivered`.
 
 Seeded products and categories use public assets such as `/products/oud-royal.svg`.
 
-Admin image upload currently accepts image files and stores small image uploads as data URLs in Supabase text fields. This keeps the dashboard working without adding Supabase Storage immediately.
-
-For a larger production catalog, add Supabase Storage later and replace data URL handling with bucket uploads.
+Admin image upload accepts JPG, PNG, WebP, and GIF files up to 2 MB. If `SUPABASE_STORAGE_BUCKET` is configured with a public bucket, uploads are saved to Supabase Storage and the public URL is stored. If the bucket is not configured, small uploads fall back to data URLs so local development keeps working.
 
 ## 8. Deployment Steps
 
