@@ -71,12 +71,21 @@ function parseDateValue(value) {
 }
 
 function normalizeBuy2Offer(settings = {}) {
+  const startsAt = settings.buy2_offer_starts_at || '';
+  const endsAt = settings.buy2_offer_ends_at || '';
+  const discountType = settings.buy2_discount_type || 'percentage';
+  const discountValue = toNumber(settings.buy2_discount_value, 10);
+  const manualState = normalizeString(settings.buy2_offer_manual_state).toLowerCase();
+  const explicitEnabled = toBoolean(settings.buy2_offer_enabled, false);
+  const hasConfiguredOffer = discountValue > 0 && Boolean(startsAt || endsAt);
+
   return {
-    enabled: toBoolean(settings.buy2_offer_enabled, false),
-    startsAt: settings.buy2_offer_starts_at || '',
-    endsAt: settings.buy2_offer_ends_at || '',
-    discountType: settings.buy2_discount_type || 'percentage',
-    discountValue: toNumber(settings.buy2_discount_value, 10),
+    enabled: manualState === 'disabled' ? false : manualState === 'enabled' || explicitEnabled || hasConfiguredOffer,
+    startsAt,
+    endsAt,
+    discountType,
+    discountValue,
+    manualState,
   };
 }
 

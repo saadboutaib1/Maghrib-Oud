@@ -197,6 +197,7 @@ values
   ('payment_method', 'cash_on_delivery'),
   ('country', 'Morocco'),
   ('buy2_offer_enabled', 'false'),
+  ('buy2_offer_manual_state', ''),
   ('buy2_offer_starts_at', ''),
   ('buy2_offer_ends_at', ''),
   ('buy2_discount_type', 'percentage'),

@@ -44,12 +44,24 @@ function isWithinDateRange(startsAt, endsAt, now = new Date()) {
 }
 
 export function normalizeBuy2Offer(settings = {}) {
+  const startsAt = settings.buy2_offer_starts_at || settings.buy2OfferStartsAt || '';
+  const endsAt = settings.buy2_offer_ends_at || settings.buy2OfferEndsAt || '';
+  const discountType = settings.buy2_discount_type || settings.buy2DiscountType || 'percentage';
+  const discountValue = toNumber(settings.buy2_discount_value ?? settings.buy2DiscountValue, 10);
+  const manualState = String(settings.buy2_offer_manual_state || settings.buy2OfferManualState || '').trim().toLowerCase();
+  const explicitEnabled = parseBoolean(settings.buy2_offer_enabled ?? settings.buy2OfferEnabled, false);
+  const hasConfiguredOffer = discountValue > 0 && Boolean(startsAt || endsAt);
+  const enabled = manualState === 'disabled'
+    ? false
+    : manualState === 'enabled' || explicitEnabled || hasConfiguredOffer;
+
   return {
-    enabled: parseBoolean(settings.buy2_offer_enabled ?? settings.buy2OfferEnabled, false),
-    startsAt: settings.buy2_offer_starts_at || settings.buy2OfferStartsAt || '',
-    endsAt: settings.buy2_offer_ends_at || settings.buy2OfferEndsAt || '',
-    discountType: settings.buy2_discount_type || settings.buy2DiscountType || 'percentage',
-    discountValue: toNumber(settings.buy2_discount_value ?? settings.buy2DiscountValue, 10),
+    enabled,
+    startsAt,
+    endsAt,
+    discountType,
+    discountValue,
+    manualState,
   };
 }
 

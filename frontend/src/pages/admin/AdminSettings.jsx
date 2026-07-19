@@ -10,6 +10,7 @@ import { useToast } from '../../context/ToastContext.jsx';
 import { getAdminText } from '../../i18n/admin.js';
 import { getSettings, getSocialLinks, updateSettings, updateSocialLinks } from '../../services/adminApi.js';
 import { getCurrencyLabel } from '../../utils/formatters.js';
+import { normalizeBuy2Offer } from '../../utils/promotions.js';
 import { buildWhatsAppLink } from '../../utils/whatsappLink.js';
 
 const emptySettingsForm = {
@@ -26,6 +27,7 @@ const emptySettingsForm = {
   youtube: '',
   whatsapp: '',
   buy2_offer_enabled: false,
+  buy2_offer_manual_state: '',
   buy2_offer_starts_at: '',
   buy2_offer_ends_at: '',
   buy2_discount_type: 'percentage',
@@ -120,6 +122,7 @@ export default function AdminSettings() {
 
         if (isMounted) {
           const offerDates = normalizeOfferDateFields(settings);
+          const normalizedOffer = normalizeBuy2Offer(settings);
 
           setForm({
             ...emptySettingsForm,
@@ -129,11 +132,12 @@ export default function AdminSettings() {
             tiktok: settings.tiktok || linkMap.tiktok || '',
             youtube: settings.youtube || linkMap.youtube || '',
             whatsapp: buildDashboardWhatsAppLink(settings.whatsapp_number || settings.whatsappNumber) || linkMap.whatsapp || '',
-            buy2_offer_enabled: toBoolean(settings.buy2_offer_enabled),
+            buy2_offer_enabled: normalizedOffer.enabled,
+            buy2_offer_manual_state: normalizedOffer.manualState,
             buy2_offer_starts_at: offerDates.startsAt,
             buy2_offer_ends_at: offerDates.endsAt,
-            buy2_discount_type: settings.buy2_discount_type || 'percentage',
-            buy2_discount_value: settings.buy2_discount_value ?? 10,
+            buy2_discount_type: normalizedOffer.discountType,
+            buy2_discount_value: normalizedOffer.discountValue,
             loyalty_points_enabled: settings.loyalty_points_enabled === undefined ? true : toBoolean(settings.loyalty_points_enabled),
             loyalty_amount_per_point: settings.loyalty_amount_per_point ?? 10,
             loyalty_reward_points: settings.loyalty_reward_points ?? 100,
@@ -205,6 +209,7 @@ export default function AdminSettings() {
       tiktok: form.tiktok,
       youtube: form.youtube,
       buy2_offer_enabled: form.buy2_offer_enabled,
+      buy2_offer_manual_state: form.buy2_offer_enabled ? 'enabled' : 'disabled',
       buy2_offer_starts_at: form.buy2_offer_starts_at || '',
       buy2_offer_ends_at: form.buy2_offer_ends_at || '',
       buy2_discount_type: form.buy2_discount_type,
